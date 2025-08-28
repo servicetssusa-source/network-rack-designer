@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cisco Switch Image Extraction Guide</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .step {
+            background: #f8f9fa;
+            border-left: 4px solid #007cba;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .important {
+            background: #fff3cd;
+            border-left: 4px solid #ffc107;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .file-path {
+            background: #e9ecef;
+            padding: 5px 10px;
+            font-family: monospace;
+            border-radius: 3px;
+        }
+        img {
+            max-width: 100%;
+            border: 1px solid #ddd;
+            margin: 10px 0;
+        }
+        h3 {
+            color: #007cba;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cisco Switch Image Extraction Guide</h1>
+    
+    <div class="important">
+        <strong>Goal:</strong> Extract the two Cisco switch images from the PDF and save them as PNG files in the correct location.
+    </div>
+
+    <h2>What We Need:</h2>
+    <ul>
+        <li><strong>Source:</strong> <span class="file-path">Switches - Catalyst 9000_Art.pdf</span></li>
+        <li><strong>Page 2:</strong> C9200L-24T-4G Front (24-port switch)</li>
+        <li><strong>Page 3:</strong> C9200L-48P-4G Front (48-port switch)</li>
+    </ul>
+
+    <h2>Step-by-Step Extraction:</h2>
+
+    <div class="step">
+        <h3>Step 1: Open the PDF</h3>
+        <p>Open the file: <span class="file-path">C:\Users\thisi\Documents\Jonathan Apps\network-rack-designer\library\Switches - Catalyst 9000_Art.pdf</span></p>
+        <p>Use any PDF viewer (Adobe Reader, Chrome, Edge, etc.)</p>
+    </div>
+
+    <div class="step">
+        <h3>Step 2: Navigate to Page 2 (24-port switch)</h3>
+        <p>Find the page with: <strong>C9200L-24T-4G Front</strong></p>
+        <p>You should see a horizontal switch image with port numbers 1-24 and G1-G4</p>
+    </div>
+
+    <div class="step">
+        <h3>Step 3: Extract Page 2 Image</h3>
+        <p><strong>Method A - Screenshot:</strong></p>
+        <ol>
+            <li>Zoom in on the switch image until it's clear and large</li>
+            <li>Take a screenshot of just the switch (Windows: Win + Shift + S)</li>
+            <li>Crop to include only the switch body (no text labels)</li>
+            <li>Save as PNG</li>
+        </ol>
+        
+        <p><strong>Method B - Right-click (if supported):</strong></p>
+        <ol>
+            <li>Right-click on the switch image</li>
+            <li>Select "Save image as..." or "Copy image"</li>
+            <li>Save as PNG</li>
+        </ol>
+    </div>
+
+    <div class="step">
+        <h3>Step 4: Save Page 2 Image</h3>
+        <p>Save the 24-port switch image as:</p>
+        <p class="file-path">C:\Users\thisi\Documents\Jonathan Apps\network-rack-designer\library\device-images\switches\cisco-c9200l-24t-4g.png</p>
+    </div>
+
+    <div class="step">
+        <h3>Step 5: Extract Page 3 Image (48-port switch)</h3>
+        <p>Navigate to page 3 with: <strong>C9200L-48P-4G Front</strong></p>
+        <p>This shows a switch with two rows of ports (1-24 bottom, 25-48 top) plus G1-G4</p>
+        <p>Use the same extraction method as Step 3</p>
+    </div>
+
+    <div class="step">
+        <h3>Step 6: Save Page 3 Image</h3>
+        <p>Save the 48-port switch image as:</p>
+        <p class="file-path">C:\Users\thisi\Documents\Jonathan Apps\network-rack-designer\library\device-images\switches\cisco-c9200l-48p-4g.png</p>
+    </div>
+
+    <div class="important">
+        <h3>Image Requirements:</h3>
+        <ul>
+            <li><strong>Format:</strong> PNG (preferred) or JPG</li>
+            <li><strong>Background:</strong> Transparent or white</li>
+            <li><strong>Content:</strong> Switch front panel only (no text labels)</li>
+            <li><strong>Quality:</strong> High resolution for clarity</li>
+            <li><strong>Cropping:</strong> Tight crop around switch body</li>
+        </ul>
+    </div>
+
+    <h2>After Extraction:</h2>
+
+    <div class="step">
+        <h3>Test the Images</h3>
+        <ol>
+            <li>Open: <span class="file-path">simple-test.html</span></li>
+            <li>Click "Test 24-Port Image" and "Test 48-Port Image"</li>
+            <li>Images should load instead of showing "Image not found"</li>
+            <li>If successful, the hybrid system is ready!</li>
+        </ol>
+    </div>
+
+    <h2>Alternative: Use Generic Switches</h2>
+    <p>If extraction is difficult, you can continue using our high-quality canvas-rendered switches. They provide excellent realistic representations with proper proportions and details.</p>
+
+    <div class="step">
+        <h3>Need Help?</h3>
+        <p>If you're having trouble with extraction:</p>
+        <ol>
+            <li>Try different PDF viewers (Chrome, Edge, Adobe Reader)</li>
+            <li>Use screenshot tools with crop functionality</li>
+            <li>The canvas fallbacks work perfectly as alternatives</li>
+        </ol>
+    </div>
+
+</body>
+</html>

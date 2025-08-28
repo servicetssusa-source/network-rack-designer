@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatsworth 2-Post Rack</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #fafbfc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .device-canvas {
+            background: #fafbfc;
+            cursor: pointer;
+            border: 1px solid #ddd;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .zoom-btn {
+            padding: 8px 12px;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .zoom-btn:hover {
+            background: #f0f0f0;
+        }
+    </style>
+</head>
+<body>
+    <div class="zoom-controls">
+        <button class="zoom-btn" onclick="zoomIn()">Zoom In (+)</button>
+        <button class="zoom-btn" onclick="zoomOut()">Zoom Out (-)</button>
+        <button class="zoom-btn" onclick="resetZoom()">Reset (100%)</button>
+    </div>
+    <canvas id="deviceCanvas" class="device-canvas" width="600" height="800"></canvas>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+    <script src="device.js"></script>
+    <script>
+        let currentZoom = 1;
+        let baseCanvasWidth = 600;
+        let baseCanvasHeight = 800;
+        
+        // Zoom functions with re-rendering for crisp display
+        function zoomIn() {
+            currentZoom = Math.min(currentZoom * 1.5, 5); // Max 5x zoom
+            applyZoom();
+        }
+        
+        function zoomOut() {
+            currentZoom = Math.max(currentZoom / 1.5, 0.5); // Min 0.5x zoom
+            applyZoom();
+        }
+        
+        function resetZoom() {
+            currentZoom = 1;
+            applyZoom();
+        }
+        
+        function applyZoom() {
+            const canvas = document.getElementById('deviceCanvas');
+            
+            // Calculate new canvas dimensions based on zoom
+            const newWidth = Math.round(baseCanvasWidth * currentZoom);
+            const newHeight = Math.round(baseCanvasHeight * currentZoom);
+            
+            // Update canvas actual size
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+            
+            // Update display size to maintain zoom appearance
+            canvas.style.width = newWidth + 'px';
+            canvas.style.height = newHeight + 'px';
+            
+            // Re-render the device at new resolution for crisp display
+            if (typeof createDevice === 'function') {
+                createDevice();
+            }
+            
+            console.log(`Zoom: ${Math.round(currentZoom * 100)}% - Canvas: ${newWidth}x${newHeight}`);
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '+' || e.key === '=') {
+                e.preventDefault();
+                zoomIn();
+            } else if (e.key === '-') {
+                e.preventDefault();
+                zoomOut();
+            } else if (e.key === '0') {
+                e.preventDefault();
+                resetZoom();
+            }
+        });
+        
+        // Initialize with device
+        window.addEventListener('load', () => {
+            console.log('Page loaded, Fabric.js available:', typeof fabric !== 'undefined');
+            if (typeof createDevice === 'function') {
+                createDevice();
+            } else {
+                console.error('createDevice function not found');
+            }
+        });
+    </script>
+</body>
+</html>

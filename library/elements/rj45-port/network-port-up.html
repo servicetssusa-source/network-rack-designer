@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Port - Clip Up</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #fafbfc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .device-canvas {
+            background: #fafbfc;
+            cursor: pointer;
+            border: 1px solid #ddd;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .zoom-btn {
+            padding: 8px 12px;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .zoom-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 300px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .info-panel h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .info-panel ul {
+            margin-left: 15px;
+        }
+
+        .inverted {
+            color: #dc3545;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="info-panel">
+        <h3>Inverted Network Port</h3>
+        <p class="inverted">🔄 CLIP UP ORIENTATION</p>
+        <p><strong>Orientation:</strong> Clip Up (Inverted)</p>
+        <br>
+        <ul>
+            <li><strong>Frame:</strong> 4% thickness (thin)</li>
+            <li><strong>Proportions:</strong> 11.7mm × 8.1mm</li>
+            <li><strong>LEDs:</strong> Optional green/amber (top)</li>
+            <li><strong>Use:</strong> Inverted mounting scenarios</li>
+        </ul>
+    </div>
+    
+    <div class="zoom-controls">
+        <button class="zoom-btn" onclick="zoomIn()">Zoom In (+)</button>
+        <button class="zoom-btn" onclick="zoomOut()">Zoom Out (-)</button>
+        <button class="zoom-btn" onclick="resetZoom()">Reset (100%)</button>
+    </div>
+    <canvas id="deviceCanvas" class="device-canvas" width="800" height="600"></canvas>
+
+    <script src="network-port-up.js"></script>
+    <script>
+        let currentZoom = 1;
+        let baseCanvasWidth = 800;
+        let baseCanvasHeight = 600;
+        
+        function zoomIn() {
+            currentZoom = Math.min(currentZoom * 1.5, 5);
+            applyZoom();
+        }
+        
+        function zoomOut() {
+            currentZoom = Math.max(currentZoom / 1.5, 0.5);
+            applyZoom();
+        }
+        
+        function resetZoom() {
+            currentZoom = 1;
+            applyZoom();
+        }
+        
+        function applyZoom() {
+            const canvas = document.getElementById('deviceCanvas');
+            const newWidth = Math.round(baseCanvasWidth * currentZoom);
+            const newHeight = Math.round(baseCanvasHeight * currentZoom);
+            
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+            canvas.style.width = newWidth + 'px';
+            canvas.style.height = newHeight + 'px';
+            
+            if (typeof createDevice === 'function') {
+                createDevice();
+            }
+            
+            console.log(`Zoom: ${Math.round(currentZoom * 100)}%`);
+        }
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '+' || e.key === '=') {
+                e.preventDefault();
+                zoomIn();
+            } else if (e.key === '-') {
+                e.preventDefault();
+                zoomOut();
+            } else if (e.key === '0') {
+                e.preventDefault();
+                resetZoom();
+            }
+        });
+        
+        window.addEventListener('load', () => {
+            console.log('Loading inverted network port (clip up)...');
+            if (typeof createDevice === 'function') {
+                createDevice();
+            }
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Rack Designer Test</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        /* Enhanced rack designer specific styles */
+        .enhanced-rack-toolbar {
+            background: #f8f9fa;
+            border-bottom: 1px solid #e9ecef;
+            padding: 8px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .enhanced-canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: calc(100vh - 140px);
+            overflow: hidden;
+        }
+        
+        .rack-design-svg {
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+        
+        .rack-design-svg:active {
+            cursor: grabbing;
+        }
+        
+        /* Ensure child SVG elements don't interfere with drag and drop */
+        .rack-design-svg * {
+            pointer-events: none;
+        }
+        
+        /* But allow the main SVG to receive events */
+        .rack-design-svg {
+            pointer-events: auto;
+        }
+        
+        .enhanced-sidebar-header {
+            background: #f8f9fa;
+            padding: 16px;
+            border-bottom: 1px solid #e9ecef;
+        }
+        
+        .enhanced-equipment-categories {
+            padding: 16px;
+        }
+        
+        .category-section {
+            margin-bottom: 16px;
+        }
+        
+        .category-header {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            background: #f8f9fa;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .category-header:hover {
+            background: #e9ecef;
+        }
+        
+        .category-icon {
+            margin-right: 8px;
+            font-size: 16px;
+        }
+        
+        .category-name {
+            flex: 1;
+            font-weight: 500;
+        }
+        
+        .category-toggle {
+            font-size: 12px;
+            color: #6c757d;
+        }
+        
+        .category-items {
+            margin-top: 8px;
+        }
+        
+        .equipment-item {
+            display: flex;
+            align-items: center;
+            padding: 8px 12px;
+            margin: 4px 0;
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            cursor: grab;
+            transition: all 0.2s ease;
+        }
+        
+        .equipment-item:hover {
+            background: #f8f9fa;
+            border-color: #3498db;
+        }
+        
+        .equipment-item:active {
+            cursor: grabbing;
+        }
+        
+        .item-color {
+            width: 12px;
+            height: 12px;
+            border-radius: 3px;
+            margin-right: 8px;
+        }
+        
+        .item-info {
+            flex: 1;
+        }
+        
+        .item-name {
+            font-size: 13px;
+            font-weight: 500;
+            color: #2c3e50;
+        }
+        
+        .item-description {
+            font-size: 11px;
+            color: #6c757d;
+        }
+        
+        .selection-info {
+            position: absolute;
+            bottom: 16px;
+            left: 16px;
+            right: 16px;
+        }
+        
+        .selection-message {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 4px;
+            padding: 8px 12px;
+            font-size: 12px;
+        }
+        
+        .selection-message p {
+            margin: 0;
+        }
+        
+        .delete-btn {
+            background: #EF4444;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            margin-top: 4px;
+            transition: background-color 0.2s ease;
+        }
+        
+        .delete-btn:hover {
+            background: #DC2626;
+        }
+        
+        .delete-btn:active {
+            background: #B91C1C;
+        }
+        
+        .sub-category-section {
+            margin-bottom: 12px;
+        }
+        
+        .sub-category-header {
+            display: flex;
+            align-items: center;
+            padding: 6px 8px;
+            background: #F3F4F6;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-left: 8px;
+        }
+        
+        .sub-category-header:hover {
+            background: #E5E7EB;
+        }
+        
+        .sub-category-icon {
+            margin-right: 6px;
+            font-size: 14px;
+        }
+        
+        .sub-category-name {
+            flex: 1;
+            font-weight: 500;
+            font-size: 12px;
+        }
+        
+        .sub-category-toggle {
+            font-size: 10px;
+            color: #6c757d;
+        }
+        
+        .sub-category-items {
+            margin-top: 6px;
+            margin-left: 16px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1><i class="fas fa-server"></i> Enhanced Rack Designer Test</h1>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <!-- Sidebar - Equipment Library -->
+            <aside class="sidebar">
+                <!-- Content will be populated by JavaScript -->
+            </aside>
+
+            <!-- Main Canvas Area -->
+            <main class="canvas-container">
+                <!-- Content will be populated by JavaScript -->
+            </main>
+        </div>
+    </div>
+
+    <!-- Loading Enhanced Scripts -->
+    <script src="js/enhanced-equipment-library-v1.1.js"></script>
+    <script src="js/enhanced-rack-designer-v2.1.js"></script>
+</body>
+</html>

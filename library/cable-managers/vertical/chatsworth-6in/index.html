@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatsworth 6" Vertical Cable Manager</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #fafbfc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .device-canvas {
+            background: #fafbfc;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="deviceCanvas" class="device-canvas" width="600" height="800"></canvas>
+
+    <script src="device.js"></script>
+    <script>
+        // Initialize with device
+        window.addEventListener('load', () => {
+            console.log('Page loaded, creating Chatsworth 6" vertical cable manager...');
+            if (typeof createDevice === 'function') {
+                createDevice();
+            } else {
+                console.error('createDevice function not found');
+            }
+        });
+    </script>
+</body>
+</html>

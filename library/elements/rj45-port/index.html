@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RJ45 Ethernet Port Element</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #fafbfc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        .device-canvas {
+            background: #fafbfc;
+            cursor: pointer;
+            border: 1px solid #ddd;
+        }
+
+        .zoom-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            gap: 10px;
+            z-index: 100;
+        }
+
+        .zoom-btn {
+            padding: 8px 12px;
+            background: #fff;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .zoom-btn:hover {
+            background: #f0f0f0;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: #fff;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            max-width: 300px;
+            font-size: 12px;
+            line-height: 1.4;
+        }
+
+        .info-panel h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        .info-panel ul {
+            margin-left: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="info-panel">
+        <h3>RJ45 Ethernet Port Element</h3>
+        <ul>
+            <li><strong>Dimensions:</strong> 21.46mm × 11.68mm</li>
+            <li><strong>Contacts:</strong> 8 metallic pins</li>
+            <li><strong>Shape:</strong> Rectangular with rounded corners</li>
+            <li><strong>Opening:</strong> Black recessed cavity</li>
+            <li><strong>Frame:</strong> Plastic surround</li>
+        </ul>
+    </div>
+    
+    <div class="zoom-controls">
+        <button class="zoom-btn" onclick="zoomIn()">Zoom In (+)</button>
+        <button class="zoom-btn" onclick="zoomOut()">Zoom Out (-)</button>
+        <button class="zoom-btn" onclick="resetZoom()">Reset (100%)</button>
+    </div>
+    <canvas id="deviceCanvas" class="device-canvas" width="800" height="600"></canvas>
+
+    <script src="device.js"></script>
+    <script>
+        let currentZoom = 1;
+        let baseCanvasWidth = 800;
+        let baseCanvasHeight = 600;
+        
+        // Zoom functions with re-rendering for crisp display
+        function zoomIn() {
+            currentZoom = Math.min(currentZoom * 1.5, 5); // Max 5x zoom
+            applyZoom();
+        }
+        
+        function zoomOut() {
+            currentZoom = Math.max(currentZoom / 1.5, 0.5); // Min 0.5x zoom
+            applyZoom();
+        }
+        
+        function resetZoom() {
+            currentZoom = 1;
+            applyZoom();
+        }
+        
+        function applyZoom() {
+            const canvas = document.getElementById('deviceCanvas');
+            
+            // Calculate new canvas dimensions based on zoom
+            const newWidth = Math.round(baseCanvasWidth * currentZoom);
+            const newHeight = Math.round(baseCanvasHeight * currentZoom);
+            
+            // Update canvas actual size
+            canvas.width = newWidth;
+            canvas.height = newHeight;
+            
+            // Update display size to maintain zoom appearance
+            canvas.style.width = newWidth + 'px';
+            canvas.style.height = newHeight + 'px';
+            
+            // Re-render the device at new resolution for crisp display
+            if (typeof createDevice === 'function') {
+                createDevice();
+            }
+            
+            console.log(`Zoom: ${Math.round(currentZoom * 100)}% - Canvas: ${newWidth}x${newHeight}`);
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', (e) => {
+            if (e.key === '+' || e.key === '=') {
+                e.preventDefault();
+                zoomIn();
+            } else if (e.key === '-') {
+                e.preventDefault();
+                zoomOut();
+            } else if (e.key === '0') {
+                e.preventDefault();
+                resetZoom();
+            }
+        });
+        
+        // Initialize with device
+        window.addEventListener('load', () => {
+            console.log('Page loaded, creating RJ45 port element...');
+            if (typeof createDevice === 'function') {
+                createDevice();
+            } else {
+                console.error('createDevice function not found');
+            }
+        });
+    </script>
+</body>
+</html>

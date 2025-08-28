@@ -1,0 +1,310 @@
+{
+  "devices": {
+    "switches": {
+      "cisco-c9200l-24t-4g": {
+        "name": "Cisco Catalyst C9200L-24T-4G",
+        "manufacturer": "Cisco",
+        "model": "C9200L-24T-4G",
+        "category": "switch",
+        "rackUnits": 1,
+        "ports": {"ethernet": 24, "sfp": 4},
+        "images": {
+          "png": "switches/24-port-switch.png"
+        },
+        "fallback": {
+          "type": "canvas",
+          "path": "../switches/generic-24port/device.js", 
+          "function": "createGeneric24PortSwitch"
+        },
+        "description": "24-Port Gigabit Switch with 4x1G SFP uplinks"
+      },
+      "cisco-c9200l-48p-4g": {
+        "name": "Cisco Catalyst C9200L-48P-4G",
+        "manufacturer": "Cisco", 
+        "model": "C9200L-48P-4G",
+        "category": "switch",
+        "rackUnits": 1,
+        "ports": {"ethernet": 48, "sfp": 4, "poe_ports": 48},
+        "images": {
+          "png": "switches/48-port-switch.png"
+        },
+        "fallback": {
+          "type": "canvas",
+          "path": "../switches/generic-48port/device.js",
+          "function": "createGeneric48PortSwitch"
+        },
+        "description": "48-Port PoE+ Switch with 4x1G SFP uplinks"
+      },
+      "switch-24-port": {
+        "name": "24-Port Gigabit Switch",
+        "category": "switch",
+        "rackUnits": 1,
+        "ports": {"ethernet": 24},
+        "fallback": {"type": "canvas", "path": "../switches/generic-24port/device.js", "function": "createGeneric24PortSwitch"},
+        "description": "Generic 24-port managed switch"
+      },
+      "switch-48-port": {
+        "name": "48-Port Gigabit Switch", 
+        "category": "switch",
+        "rackUnits": 1,
+        "ports": {"ethernet": 48},
+        "fallback": {"type": "canvas", "path": "../switches/generic-48port/device.js", "function": "createGeneric48PortSwitch"},
+        "description": "Generic 48-port managed switch"
+      },
+      "ubiquiti-usw-pro-48-poe": {
+        "name": "Ubiquiti USW-Pro-48-POE",
+        "manufacturer": "Ubiquiti",
+        "model": "USW-Pro-48-POE",
+        "category": "switch",
+        "rackUnits": 1,
+        "width": 442,
+        "height": 44,
+        "depth": 400,
+        "dimensions_unit": "mm",
+        "ports": {
+          "ethernet": 48,
+          "sfp_plus": 4,
+          "poe_ports": 48,
+          "poe_budget": "600W"
+        },
+        "images": {
+          "png": "switches/ubiquiti-usw-pro-48-poe.png",
+          "svg": "switches/ubiquiti-usw-pro-48-poe.svg"
+        },
+        "fallback": {
+          "type": "canvas",
+          "path": "../switches/ubiquiti-usw-pro-48-poe/device.js",
+          "function": "createUbiquitiUSWPro48POE"
+        },
+        "mounting": "rack",
+        "description": "48-Port Gigabit PoE++ Layer 3 Switch"
+      }
+    },
+    "routers": {
+      "cisco-isr4331": {
+        "name": "Cisco ISR4331 Router",
+        "manufacturer": "Cisco",
+        "model": "ISR4331",
+        "category": "router",
+        "rackUnits": 1,
+        "ports": {"ethernet": 2, "console": 1, "aux": 1},
+        "images": {
+          "png": "routers/cisco-isr4331.png"
+        },
+        "fallback": {
+          "type": "canvas",
+          "path": "../routers/generic-1u/device.js",
+          "function": "createGenericRouter"
+        },
+        "description": "Integrated Services Router with dual Gigabit Ethernet"
+      },
+      "cisco-isr4351": {
+        "name": "Cisco ISR4351 Router", 
+        "manufacturer": "Cisco",
+        "model": "ISR4351",
+        "category": "router",
+        "rackUnits": 2,
+        "ports": {"ethernet": 3, "console": 1, "aux": 1},
+        "images": {
+          "png": "routers/cisco-isr4351.png"
+        },
+        "fallback": {
+          "type": "canvas",
+          "path": "../routers/generic-2u/device.js", 
+          "function": "createGenericRouter2U"
+        },
+        "description": "2U Integrated Services Router with triple Gigabit Ethernet"
+      }
+    },
+    "firewalls": {
+      "cisco-asa5516-x": {
+        "name": "Cisco ASA5516-X Firewall",
+        "manufacturer": "Cisco",
+        "model": "ASA5516-X", 
+        "category": "firewall",
+        "rackUnits": 1,
+        "ports": {"ethernet": 8, "management": 1},
+        "images": {
+          "png": "firewalls/cisco-asa5516-x.png"
+        },
+        "fallback": {
+          "type": "canvas",
+          "path": "../firewalls/generic-1u/device.js",
+          "function": "createGenericFirewall"
+        },
+        "description": "Next-Generation Firewall with 8 Gigabit Ethernet ports"
+      },
+      "cisco-asa5525-x": {
+        "name": "Cisco ASA5525-X Firewall",
+        "manufacturer": "Cisco", 
+        "model": "ASA5525-X",
+        "category": "firewall",
+        "rackUnits": 1,
+        "ports": {"ethernet": 8, "sfp": 2, "management": 1},
+        "images": {
+          "png": "firewalls/cisco-asa5525-x.png"
+        },
+        "fallback": {
+          "type": "canvas",
+          "path": "../firewalls/generic-1u/device.js",
+          "function": "createGenericFirewall"
+        },
+        "description": "Next-Generation Firewall with 8 GbE + 2 SFP ports"
+      }
+    },
+    "pdus": {
+      "apc-ap8941": {
+        "name": "APC Rack PDU AP8941",
+        "manufacturer": "APC",
+        "model": "AP8941", 
+        "category": "pdu",
+        "rackUnits": 2,
+        "outlets": {"c13": 24, "c19": 6},
+        "power": "208V 30A",
+        "images": {
+          "png": "pdus/apc-ap8941.png"
+        },
+        "fallback": {
+          "type": "canvas",
+          "path": "../pdus/generic-2u/device.js",
+          "function": "createGenericPDU2U"
+        },
+        "description": "Rack PDU with 24 C13 and 6 C19 outlets"
+      },
+      "apc-ap8953": {
+        "name": "APC Rack PDU AP8953",
+        "manufacturer": "APC",
+        "model": "AP8953",
+        "category": "pdu", 
+        "rackUnits": 0,
+        "mounting": "vertical",
+        "outlets": {"c13": 24},
+        "power": "208V 30A",
+        "images": {
+          "png": "pdus/apc-ap8953.png"
+        },
+        "fallback": {
+          "type": "canvas", 
+          "path": "../pdus/vertical/device.js",
+          "function": "createVerticalPDU"
+        },
+        "description": "Vertical Rack PDU with 24 C13 outlets"
+      },
+      "tripp-lite-pdumh30hvt": {
+        "name": "Tripp Lite PDUMH30HVT",
+        "manufacturer": "Tripp Lite",
+        "model": "PDUMH30HVT",
+        "category": "pdu",
+        "rackUnits": 1,
+        "outlets": {"nema_5_15r": 12},
+        "power": "120V 30A", 
+        "images": {
+          "png": "pdus/tripp-lite-pdumh30hvt.png"
+        },
+        "fallback": {
+          "type": "canvas",
+          "path": "../pdus/generic-1u/device.js",
+          "function": "createGenericPDU1U"
+        },
+        "description": "1U Horizontal PDU with 12 NEMA 5-15R outlets"
+      }
+    },
+    "patch_panels": {
+      "patch-panel-24-port": {
+        "name": "24-Port Patch Panel",
+        "category": "patch_panel",
+        "rackUnits": 1,
+        "ports": {"ethernet": 24},
+        "images": {
+          "png": "patch-panels/24-port-patch-panel.png"
+        },
+        "fallback": {"type": "canvas", "path": "../patch-panels/generic-24port/device.js", "function": "createGeneric24PortPatchPanel"},
+        "description": "Generic 24-port patch panel"
+      },
+      "patch-panel-48-port": {
+        "name": "48-Port Patch Panel",
+        "category": "patch_panel", 
+        "rackUnits": 2,
+        "ports": {"ethernet": 48},
+        "images": {
+          "png": "patch-panels/48-port-patch-panel.png"
+        },
+        "fallback": {"type": "canvas", "path": "../patch-panels/generic-48port/device.js", "function": "createGeneric48PortPatchPanel"},
+        "description": "Generic 48-port patch panel"
+      },
+      "patch-panel-48-port-angled": {
+        "name": "48-Port Angled Patch Panel",
+        "category": "patch_panel",
+        "rackUnits": 2, 
+        "ports": {"ethernet": 48},
+        "fallback": {"type": "canvas", "path": "../patch-panels/commscope-angled-48port/device.js", "function": "createCommScope48PortPatchPanel"},
+        "description": "Generic 48-port angled patch panel"
+      }
+    },
+    "servers": {
+      "server-1u": {
+        "name": "1U Rack Server",
+        "category": "server",
+        "rackUnits": 1,
+        "fallback": {"type": "canvas", "path": "../servers/generic-1u/device.js", "function": "createGeneric1UServer"},
+        "description": "Generic 1U rack-mounted server"
+      },
+      "server-2u": {
+        "name": "2U Rack Server", 
+        "category": "server",
+        "rackUnits": 2,
+        "fallback": {"type": "canvas", "path": "../servers/generic-2u/device.js", "function": "createGeneric2UServer"},
+        "description": "Generic 2U rack-mounted server"
+      }
+    },
+    "accessories": {
+      "blank-panel-1u": {
+        "name": "1U Blank Panel",
+        "category": "accessory",
+        "rackUnits": 1,
+        "fallback": {"type": "canvas", "path": "../accessories/blank-1u/device.js", "function": "createBlank1U"},
+        "description": "1U rack blank panel"
+      },
+      "blank-panel-2u": {
+        "name": "2U Blank Panel",
+        "category": "accessory", 
+        "rackUnits": 2,
+        "fallback": {"type": "canvas", "path": "../accessories/blank-2u/device.js", "function": "createBlank2U"},
+        "description": "2U rack blank panel"
+      },
+      "shelf-1u": {
+        "name": "1U Equipment Shelf",
+        "category": "accessory",
+        "rackUnits": 1,
+        "fallback": {"type": "canvas", "path": "../accessories/shelf-1u/device.js", "function": "createShelf1U"},
+        "description": "1U equipment shelf"
+      },
+      "rj45-female": {
+        "name": "RJ45 Female Connector",
+        "category": "connector",
+        "images": {
+          "png": "accessories/rj45-female.png"
+        }
+      },
+      "simple-rj45": {
+        "name": "Simple RJ45 Connector",
+        "category": "connector", 
+        "images": {
+          "webp": "accessories/simple-rj45.webp"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "version": "1.0",
+    "created": "2025-08-17",
+    "description": "Device image library for network rack designer",
+    "image_standards": {
+      "resolution": "High resolution preferred (300+ DPI)",
+      "format": "PNG, SVG, or WebP",
+      "background": "Transparent or white background",
+      "perspective": "Front view for rack-mounted equipment",
+      "naming": "lowercase-with-hyphens"
+    }
+  }
+}

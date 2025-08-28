@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Device Loader Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            background: #f5f5f5;
+        }
+        
+        .device-container {
+            background: white;
+            margin: 20px 0;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .device-display {
+            width: 600px;
+            height: 100px;
+            border: 2px solid #ddd;
+            margin: 10px 0;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .controls {
+            margin: 10px 0;
+        }
+        
+        button {
+            margin: 5px;
+            padding: 8px 16px;
+            background: #007cba;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        button:hover {
+            background: #005a84;
+        }
+        
+        .info {
+            background: #e3f2fd;
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Device Image/Canvas Hybrid System Test</h1>
+    
+    <div class="info">
+        <strong>Instructions:</strong>
+        <ol>
+            <li>Extract switch images from the PDF and save them as:</li>
+            <ul>
+                <li><code>switches/cisco-c9200l-24t-4g.png</code></li>
+                <li><code>switches/cisco-c9200l-48p-4g.png</code></li>
+            </ul>
+            <li>Click the buttons below to test the hybrid system</li>
+            <li>If images exist → real device images will load</li>
+            <li>If images missing → canvas fallbacks will render</li>
+        </ol>
+    </div>
+
+    <div class="device-container">
+        <h3>Cisco Catalyst C9200L-24T-4G (24-Port)</h3>
+        <div class="controls">
+            <button onclick="loadDevice('switches', 'cisco-c9200l-24t-4g', 'device1')">Load 24-Port Switch</button>
+            <button onclick="clearDevice('device1')">Clear</button>
+        </div>
+        <div id="device1" class="device-display">Click "Load 24-Port Switch" to test</div>
+    </div>
+
+    <div class="device-container">
+        <h3>Cisco Catalyst C9200L-48P-4G (48-Port PoE+)</h3>
+        <div class="controls">
+            <button onclick="loadDevice('switches', 'cisco-c9200l-48p-4g', 'device2')">Load 48-Port Switch</button>
+            <button onclick="clearDevice('device2')">Clear</button>
+        </div>
+        <div id="device2" class="device-display">Click "Load 48-Port Switch" to test</div>
+    </div>
+
+    <div class="device-container">
+        <h3>Generic Fallback Test</h3>
+        <div class="controls">
+            <button onclick="loadDevice('switches', 'switch-24-port', 'device3')">Load Generic 24-Port</button>
+            <button onclick="loadDevice('switches', 'switch-48-port', 'device4')">Load Generic 48-Port</button>
+        </div>
+        <div id="device3" class="device-display">Generic 24-port (canvas fallback)</div>
+        <div id="device4" class="device-display">Generic 48-port (canvas fallback)</div>
+    </div>
+
+    <script src="device-loader.js"></script>
+    <script>
+        let deviceLoader;
+
+        async function init() {
+            deviceLoader = new DeviceLoader();
+            // Override the fetch path since we're in the same directory as devices.json
+            deviceLoader.devicesPath = './devices.json';
+            await deviceLoader.initialize();
+            console.log('Device loader initialized');
+        }
+
+        async function loadDevice(category, deviceKey, targetId) {
+            const targetElement = document.getElementById(targetId);
+            targetElement.innerHTML = '<div style="padding: 20px;">Loading...</div>';
+            
+            try {
+                const success = await deviceLoader.loadDevice(category, deviceKey, targetElement, {
+                    width: 600,
+                    height: 100
+                });
+                
+                if (success) {
+                    console.log(`Successfully loaded ${category}/${deviceKey}`);
+                } else {
+                    targetElement.innerHTML = '<div style="padding: 20px; color: red;">Failed to load device</div>';
+                }
+            } catch (error) {
+                console.error('Error loading device:', error);
+                targetElement.innerHTML = '<div style="padding: 20px; color: red;">Error: ' + error.message + '</div>';
+            }
+        }
+
+        function clearDevice(targetId) {
+            const targetElement = document.getElementById(targetId);
+            targetElement.innerHTML = '<div style="padding: 20px; color: #666;">Cleared</div>';
+        }
+
+        // Initialize when page loads
+        window.addEventListener('load', init);
+    </script>
+</body>
+</html>

@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Patch Panel Images</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .device-test { 
+            margin: 20px 0; 
+            padding: 20px; 
+            border: 1px solid #ccc; 
+            border-radius: 5px;
+            background: #f9f9f9;
+        }
+        .device-container {
+            width: 600px;
+            height: 100px;
+            border: 1px solid #333;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: white;
+        }
+        img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        .status { font-weight: bold; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <h1>Patch Panel Image Test</h1>
+    <p>Testing the newly added patch panel images in the hybrid system.</p>
+
+    <div class="device-test">
+        <h3>24-Port Patch Panel</h3>
+        <div class="status" id="status-24">Loading...</div>
+        <div class="device-container">
+            <img id="img-24" alt="24-Port Patch Panel">
+        </div>
+    </div>
+
+    <div class="device-test">
+        <h3>48-Port Patch Panel</h3>
+        <div class="status" id="status-48">Loading...</div>
+        <div class="device-container">
+            <img id="img-48" alt="48-Port Patch Panel">
+        </div>
+    </div>
+
+    <script>
+        // Test 24-port patch panel
+        const img24 = document.getElementById('img-24');
+        const status24 = document.getElementById('status-24');
+        
+        img24.onload = function() {
+            status24.textContent = 'Image loaded successfully';
+            status24.className = 'status success';
+        };
+        
+        img24.onerror = function() {
+            status24.textContent = 'Failed to load image';
+            status24.className = 'status error';
+        };
+        
+        img24.src = 'patch-panels/24-port-patch-panel.png';
+
+        // Test 48-port patch panel
+        const img48 = document.getElementById('img-48');
+        const status48 = document.getElementById('status-48');
+        
+        img48.onload = function() {
+            status48.textContent = 'Image loaded successfully';
+            status48.className = 'status success';
+        };
+        
+        img48.onerror = function() {
+            status48.textContent = 'Failed to load image';
+            status48.className = 'status error';
+        };
+        
+        img48.src = 'patch-panels/48-port-patch-panel.png';
+    </script>
+</body>
+</html>

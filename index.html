@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Rack Layout Designer</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-left">
+                <h1><i class="fas fa-server"></i> Network Rack Designer</h1>
+            </div>
+            <div class="header-right">
+                <button id="toggleEnhanced" class="btn btn-info" style="margin-right: 10px;">
+                    <i class="fas fa-magic"></i> Switch to Enhanced Designer
+                </button>
+                <button id="exportPDF" class="btn btn-primary">
+                    <i class="fas fa-file-pdf"></i> Export PDF
+                </button>
+                <button id="exportPNG" class="btn btn-secondary">
+                    <i class="fas fa-image"></i> Export PNG
+                </button>
+            </div>
+        </header>
+
+        <div class="main-container">
+            <!-- Sidebar - Equipment Library -->
+            <aside class="sidebar">
+                <div class="sidebar-header">
+                    <h3><i class="fas fa-th-large"></i> Equipment Library</h3>
+                </div>
+                
+                <div class="equipment-categories">
+                    <!-- Tab navigation and content will be populated by JavaScript -->
+                </div>
+            </aside>
+
+            <!-- Main Canvas Area -->
+            <main class="canvas-container">
+                <div class="canvas-toolbar">
+                    <div class="toolbar-left">
+                        <button id="zoomIn" class="btn-icon" title="Zoom In">
+                            <i class="fas fa-search-plus"></i>
+                        </button>
+                        <button id="zoomOut" class="btn-icon" title="Zoom Out">
+                            <i class="fas fa-search-minus"></i>
+                        </button>
+                        <button id="zoomFit" class="btn-icon" title="Fit to Screen">
+                            <i class="fas fa-expand-arrows-alt"></i>
+                        </button>
+                        <span class="zoom-level">100%</span>
+                    </div>
+                    <div class="toolbar-right">
+                        <button id="gridToggle" class="btn-icon active" title="Toggle Grid">
+                            <i class="fas fa-th"></i>
+                        </button>
+                        <button id="snapToggle" class="btn-icon active" title="Toggle Snap">
+                            <i class="fas fa-magnet"></i>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="canvas-wrapper">
+                    <canvas id="designCanvas" width="1200" height="800"></canvas>
+                </div>
+            </main>
+
+            <!-- Properties Panel -->
+            <aside class="properties-panel">
+                <div class="properties-header">
+                    <h3><i class="fas fa-cog"></i> Properties</h3>
+                </div>
+                <div class="properties-content">
+                    <div id="noSelection" class="no-selection">
+                        <p>Select an item to view properties</p>
+                    </div>
+                    <div id="itemProperties" class="item-properties" style="display: none;">
+                        <div class="property-group">
+                            <label>Name:</label>
+                            <input type="text" id="itemName" placeholder="Equipment name">
+                        </div>
+                        <div class="property-group">
+                            <label>Type:</label>
+                            <span id="itemType">-</span>
+                        </div>
+                        <div class="property-group">
+                            <label>Height:</label>
+                            <span id="itemHeight">-</span>
+                        </div>
+                        <div class="property-group">
+                            <label>Position:</label>
+                            <span id="itemPosition">-</span>
+                        </div>
+                        <div class="property-group">
+                            <button id="deleteItem" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Delete
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- Loading Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js" onload="console.log('Fabric.js loaded')" onerror="console.error('Failed to load Fabric.js')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js" onload="console.log('jsPDF loaded')" onerror="console.error('Failed to load jsPDF')"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js" onload="console.log('html2canvas loaded')" onerror="console.error('Failed to load html2canvas')"></script>
+    
+    <script>
+        // Wait for all CDN libraries to load before loading our scripts
+        function loadAppScripts() {
+            const fabricLoaded = typeof fabric !== 'undefined';
+            const html2canvasLoaded = typeof html2canvas !== 'undefined';
+            
+            console.log('Essential library status:', {
+                fabric: fabricLoaded,
+                html2canvas: html2canvasLoaded
+            });
+            
+            // Only require Fabric.js for the app to start (PDF can be optional)
+            if (!fabricLoaded) {
+                console.log('Waiting for Fabric.js to load...');
+                setTimeout(loadAppScripts, 200);
+                return;
+            }
+            
+            console.log('All libraries loaded, loading app scripts...');
+            
+            const scripts = [
+                'js/rack-components.js',
+                'js/equipment-library.js',
+                'js/device-image-manager.js',
+                'js/canvas-manager.js',
+                'js/export-manager.js',
+                'js/enhanced-rack-designer.js',
+                'js/app.js'
+            ];
+            
+            let loadedCount = 0;
+            
+            scripts.forEach((src, index) => {
+                const script = document.createElement('script');
+                script.src = src;
+                script.onload = () => {
+                    console.log(`Loaded: ${src}`);
+                    loadedCount++;
+                    if (loadedCount === scripts.length) {
+                        console.log('All app scripts loaded successfully');
+                    }
+                };
+                script.onerror = () => console.error(`Failed to load: ${src}`);
+                document.head.appendChild(script);
+            });
+        }
+        
+        // Start loading after DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', loadAppScripts);
+        } else {
+            loadAppScripts();
+        }
+    </script>
+</body>
+</html>
