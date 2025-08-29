@@ -1,4 +1,520 @@
-// Enhanced Rack Designer - Inspired by modern React approach
+// Network Rack Designer v2.3 - Modular Architecture
+// CoordinateManager - Handles all coordinate transformations and positioning
+class CoordinateManager {
+    constructor(rackDesigner) {
+        this.designer = rackDesigner;
+    }
+    
+    // Convert screen coordinates to SVG coordinates
+    screenToSVG(screenX, screenY) {
+        const svg = document.getElementById('rackDesignSVG');
+        const pt = svg.createSVGPoint();
+        pt.x = screenX;
+        pt.y = screenY;
+        
+        const svgPt = pt.matrixTransform(svg.getScreenCTM().inverse());
+        console.log(`V2.3 CoordinateManager: Screen(${screenX}, ${screenY}) -> SVG(${svgPt.x}, ${svgPt.y})`);
+        return { x: svgPt.x, y: svgPt.y };
+    }
+    
+    // Convert SVG coordinates to screen coordinates
+    svgToScreen(svgX, svgY) {
+        const svg = document.getElementById('rackDesignSVG');
+        const pt = svg.createSVGPoint();
+        pt.x = svgX;
+        pt.y = svgY;
+        
+        const screenPt = pt.matrixTransform(svg.getScreenCTM());
+        return { x: screenPt.x, y: screenPt.y };
+    }
+    
+    // Get the center point of a rack for proper positioning
+    getRackCenter(rack) {
+        const centerX = rack.x + (this.designer.RACK_WIDTH / 2);
+        const centerY = rack.y + (rack.height * this.designer.UNIT_HEIGHT / 2);
+        return { x: centerX, y: centerY };
+    }
+    
+    // Calculate precise drop position accounting for cursor offset
+    calculateDropPosition(dragEvent) {
+        console.log(`V2.3 CoordinateManager: Starting calculation for Screen(${dragEvent.clientX}, ${dragEvent.clientY})`);
+        console.log(`V2.3 CoordinateManager: Current zoom=${this.designer.zoom}, pan=`, this.designer.pan);
+        
+        const svgCoords = this.screenToSVG(dragEvent.clientX, dragEvent.clientY);
+        
+        // Account for zoom and pan transformation
+        const worldX = (svgCoords.x - this.designer.pan.x) / this.designer.zoom;
+        const worldY = (svgCoords.y - this.designer.pan.y) / this.designer.zoom;
+        
+        console.log(`V2.3 CoordinateManager: SVG coords(${svgCoords.x}, ${svgCoords.y}) -> World(${worldX}, ${worldY})`);
+        
+        return { x: worldX, y: worldY };
+    }
+}
+
+// CustomDragManager - Replaces HTML5 Drag API for better control
+class CustomDragManager {
+    constructor(rackDesigner) {
+        this.designer = rackDesigner;
+        this.isDragging = false;
+        this.dragElement = null;
+        this.dragData = null;
+        this.previewElement = null;
+        this.startPosition = { x: 0, y: 0 };
+        
+        this.setupCustomDrag();
+    }
+    
+    setupCustomDrag() {
+        // Replace HTML5 drag with custom mouse events
+        document.addEventListener('mousedown', (e) => this.handleMouseDown(e));
+        document.addEventListener('mousemove', (e) => this.handleMouseMove(e));
+        document.addEventListener('mouseup', (e) => this.handleMouseUp(e));
+    }
+    
+    handleMouseDown(e) {
+        // Check if this is a draggable equipment item
+        const equipmentItem = e.target.closest('.equipment-item');
+        if (!equipmentItem) return;
+        
+        e.preventDefault();
+        
+        // Get device data from the element
+        this.dragData = {
+            type: equipmentItem.dataset.deviceType,
+            name: equipmentItem.dataset.deviceName,
+            isInfrastructure: equipmentItem.dataset.isInfrastructure === 'true'
+        };
+        
+        console.log('V2.3 CustomDragManager: Drag started', this.dragData);
+        
+        this.isDragging = true;
+        this.dragElement = equipmentItem;
+        this.startPosition = { x: e.clientX, y: e.clientY };
+        
+        // Set cursor style
+        document.body.style.cursor = 'grabbing';
+    }
+    
+    async handleMouseMove(e) {
+        if (!this.isDragging) return;
+        
+        // Check if we've moved enough to start actual dragging
+        const deltaX = Math.abs(e.clientX - this.startPosition.x);
+        const deltaY = Math.abs(e.clientY - this.startPosition.y);
+        const dragThreshold = 5; // pixels
+        
+        if (deltaX < dragThreshold && deltaY < dragThreshold) {
+            return; // Not enough movement to start drag
+        }
+        
+        e.preventDefault();
+        
+        // V2.3: Use SVG-based previews like v2.2 instead of DOM previews
+        // The preview will be rendered as part of the main SVG render during updateValidDropZones()
+        
+        // Update drag position for drop zone calculations
+        const dropPosition = this.designer.coordinateManager.calculateDropPosition(e);
+        this.designer.dragPosition = dropPosition;
+        
+        // Set the draggedDevice for SVG preview rendering (like v2.2)
+        let deviceHeight = 1; // Default
+        
+        // Set correct height for different device types
+        if (this.dragData.type.includes('2u')) {
+            deviceHeight = 2;
+        } else if (this.dragData.type.includes('1u')) {
+            deviceHeight = 1;
+        }
+        
+        this.designer.draggedDevice = {
+            type: this.dragData.type,
+            isInfrastructure: this.dragData.isInfrastructure,
+            height: deviceHeight
+        };
+        
+        // Calculate valid drop zones and trigger render (which will show SVG preview)
+        this.updateValidDropZones();
+    }
+    
+    handleMouseUp(e) {
+        if (!this.isDragging) return;
+        
+        console.log('🚀 V2.3 MOUSE UP - Starting drop sequence');
+        console.log('📍 Mouse position:', e.clientX, e.clientY);
+        console.log('📦 Drag data:', this.dragData);
+        
+        // Only attempt drop if we actually dragged (moved enough distance)
+        const deltaX = Math.abs(e.clientX - this.startPosition.x);
+        const deltaY = Math.abs(e.clientY - this.startPosition.y);
+        const dragThreshold = 5; // pixels
+        const actuallyDragged = deltaX >= dragThreshold || deltaY >= dragThreshold;
+        
+        console.log('🖼️ Actually dragged:', actuallyDragged, `(${deltaX}, ${deltaY})`);
+        
+        if (actuallyDragged) {
+            // Check if we're over the canvas area (not sidebar)
+            const svg = document.getElementById('rackDesignSVG');
+            const svgRect = svg.getBoundingClientRect();
+            console.log('📐 SVG bounds:', svgRect);
+            
+            const isOverCanvas = e.clientX >= svgRect.left && e.clientX <= svgRect.right &&
+                               e.clientY >= svgRect.top && e.clientY <= svgRect.bottom;
+            
+            console.log('🎯 Is over canvas:', isOverCanvas);
+            
+            if (isOverCanvas) {
+                console.log('✅ CANVAS HIT - Attempting drop');
+                const dropPosition = this.designer.coordinateManager.calculateDropPosition(e);
+                
+                console.log('📍 Calculated drop position:', dropPosition);
+                console.log('🏗️ Is infrastructure:', this.dragData.isInfrastructure);
+                console.log('🎯 Valid drop zones:', this.designer.validDropZones);
+                
+                // Always allow infrastructure drops, require valid zones for devices
+                if (this.dragData.isInfrastructure || this.designer.validDropZones.length > 0) {
+                    console.log('🎯 DROP CONDITIONS MET - Calling simulateDropEvent');
+                    this.simulateDropEvent(e, dropPosition);
+                } else {
+                    console.log('❌ DROP REJECTED - No valid drop zones for device');
+                }
+            } else {
+                console.log('❌ OUTSIDE CANVAS - Canceling drag');
+            }
+        } else {
+            console.log('❌ NOT ENOUGH MOVEMENT - Treating as click, no drop');
+        }
+        
+        // Clean up
+        console.log('🧹 Cleaning up drag operation');
+        this.cleanupDrag();
+    }
+    
+    async createPreviewElement() {
+        console.log('V2.3: Creating preview for', this.dragData.type);
+        
+        this.previewElement = document.createElement('div');
+        this.previewElement.style.cssText = `
+            position: fixed;
+            pointer-events: none;
+            z-index: 100000;
+            transform: translate(-50%, -50%);
+            opacity: 0.9;
+            border: 2px solid #3b82f6;
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            padding: 4px;
+            font-family: Arial, sans-serif;
+            font-size: 11px;
+            color: #1d4ed8;
+            font-weight: 500;
+            text-align: center;
+            white-space: nowrap;
+            min-width: 80px;
+        `;
+        
+        if (this.dragData.isInfrastructure && this.dragData.type.includes('rack')) {
+            // Create rack-like preview
+            const rackHeight = this.getRackHeight();
+            this.previewElement.style.width = '60px';
+            this.previewElement.style.height = Math.max(rackHeight * 1.5, 40) + 'px';
+            this.previewElement.style.background = 'linear-gradient(145deg, #f8f9fa, #e9ecef)';
+            this.previewElement.style.border = '2px solid #6c757d';
+            
+            // Add rack unit lines
+            for (let i = 0; i < rackHeight; i += 6) {
+                const line = document.createElement('div');
+                line.style.cssText = `
+                    position: absolute;
+                    left: 4px;
+                    right: 4px;
+                    top: ${4 + (i * 1.5)}px;
+                    height: 1px;
+                    background: #adb5bd;
+                `;
+                this.previewElement.appendChild(line);
+            }
+            
+            const label = document.createElement('div');
+            label.style.cssText = `
+                position: absolute;
+                bottom: 2px;
+                left: 2px;
+                right: 2px;
+                font-size: 9px;
+                color: #495057;
+            `;
+            label.textContent = rackHeight + 'U';
+            this.previewElement.appendChild(label);
+            
+        } else if (this.dragData.type === 'test-crosshair') {
+            // Create crosshair preview
+            this.previewElement.style.width = '40px';
+            this.previewElement.style.height = '40px';
+            this.previewElement.style.borderRadius = '50%';
+            this.previewElement.style.border = '2px solid #dc3545';
+            this.previewElement.style.background = 'rgba(220, 53, 69, 0.1)';
+            
+            const crosshair = document.createElement('div');
+            crosshair.innerHTML = '✚';
+            crosshair.style.cssText = `
+                color: #dc3545;
+                font-size: 16px;
+                line-height: 36px;
+                text-align: center;
+            `;
+            this.previewElement.appendChild(crosshair);
+            
+        } else {
+            // Device preview
+            this.previewElement.style.width = '100px';
+            this.previewElement.style.height = '20px';
+            this.previewElement.textContent = this.dragData.name || this.dragData.type;
+            this.previewElement.style.lineHeight = '16px';
+        }
+        
+        document.body.appendChild(this.previewElement);
+        console.log('V2.3: Created simple preview for', this.dragData.name);
+    }
+    
+    getRackHeight() {
+        if (this.dragData.type.includes('42u')) return 42;
+        if (this.dragData.type.includes('24u')) return 24;  
+        if (this.dragData.type.includes('12u')) return 12;
+        if (this.dragData.type.includes('9u')) return 9;
+        return 24; // default
+    }
+    
+    createRackPreview() {
+        const rackHeight = this.dragData.type.includes('42u') ? 168 : 
+                          this.dragData.type.includes('24u') ? 96 : 48;
+        
+        this.previewElement.style.cssText = `
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+            transform: translate(-50%, -50%);
+            width: 80px;
+            height: ${rackHeight}px;
+            background: linear-gradient(145deg, #f0f0f0, #d0d0d0);
+            border: 2px solid #888;
+            border-radius: 4px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            opacity: 0.9;
+        `;
+        
+        // Add rack unit indicators
+        const units = Math.floor(rackHeight / 4);
+        for (let i = 0; i < units; i++) {
+            const line = document.createElement('div');
+            line.style.cssText = `
+                position: absolute;
+                left: 5px;
+                right: 5px;
+                top: ${i * 4}px;
+                height: 1px;
+                background: #999;
+            `;
+            this.previewElement.appendChild(line);
+        }
+    }
+    
+    createCrosshairPreview() {
+        this.previewElement.style.cssText = `
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            background: rgba(255, 0, 0, 0.1);
+            border: 2px solid #ff0000;
+            border-radius: 50%;
+            opacity: 0.8;
+        `;
+        
+        // Add crosshair lines
+        const hLine = document.createElement('div');
+        hLine.style.cssText = `
+            position: absolute;
+            left: 10px;
+            right: 10px;
+            top: 50%;
+            height: 2px;
+            background: #ff0000;
+            transform: translateY(-50%);
+        `;
+        
+        const vLine = document.createElement('div');
+        vLine.style.cssText = `
+            position: absolute;
+            top: 10px;
+            bottom: 10px;
+            left: 50%;
+            width: 2px;
+            background: #ff0000;
+            transform: translateX(-50%);
+        `;
+        
+        this.previewElement.appendChild(hLine);
+        this.previewElement.appendChild(vLine);
+    }
+    
+    async createDevicePreview() {
+        // Use your existing device image paths
+        const imagePath = this.getDeviceImagePath();
+        if (imagePath) {
+            console.log('V2.3: Loading device image from:', imagePath);
+            
+            // Create image element for preview
+            const img = document.createElement('img');
+            img.style.cssText = `
+                position: fixed;
+                pointer-events: none;
+                z-index: 10000;
+                transform: translate(-50%, -50%);
+                width: 120px;
+                height: auto;
+                max-height: 48px;
+                border: 2px solid #3b82f6;
+                border-radius: 4px;
+                box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+                opacity: 0.9;
+                background: white;
+                padding: 2px;
+            `;
+            
+            img.onload = () => {
+                console.log('V2.3: Device image loaded successfully');
+                // Replace the preview element with the loaded image
+                if (this.previewElement.parentNode) {
+                    this.previewElement.parentNode.replaceChild(img, this.previewElement);
+                    this.previewElement = img;
+                }
+            };
+            
+            img.onerror = () => {
+                console.log('V2.3: Failed to load device image, using generic preview');
+                this.createGenericPreview();
+            };
+            
+            img.src = imagePath;
+            this.previewElement = img; // Set immediately for positioning
+        } else {
+            console.log('V2.3: No device image path found, using generic preview');
+            this.createGenericPreview();
+        }
+    }
+    
+    getDeviceImagePath() {
+        // Map device types to your actual image files
+        const imageMap = {
+            'cisco-c9200l-24t-4g': 'library/device-images/switches/24-port-switch.png',
+            'cisco-c9200l-48p-4g': 'library/device-images/switches/48-port-switch.png', 
+            'cisco-isr4331': 'library/device-images/routers/cisco-isr4331.png',
+            'cisco-asa5516-x': 'library/device-images/firewalls/cisco-asa5516-x.png',
+            'apc-ap8941': 'library/device-images/pdus/apc-ap8941.png',
+            'tripp-lite-pdumh30hvt': 'library/device-images/pdus/tripp-lite-pdumh30hvt.png',
+            'patch-panel-24-port': 'library/device-images/patch-panels/24-port-patch-panel.png',
+            'patch-panel-48-port': 'library/device-images/patch-panels/48-port-patch-panel.png'
+        };
+        
+        console.log('V2.3: Looking up image for device type:', this.dragData.type);
+        return imageMap[this.dragData.type] || null;
+    }
+    
+    createGenericPreview() {
+        this.previewElement.style.cssText = `
+            position: fixed;
+            pointer-events: none;
+            z-index: 10000;
+            transform: translate(-50%, -50%);
+            padding: 8px 16px;
+            background: rgba(59, 130, 246, 0.9);
+            color: white;
+            border: 2px solid #3b82f6;
+            border-radius: 6px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+            font-size: 12px;
+            font-weight: 500;
+            white-space: nowrap;
+        `;
+        this.previewElement.textContent = this.dragData.name || this.dragData.type;
+    }
+    
+    updateValidDropZones() {
+        // For infrastructure items, always allow dropping
+        if (this.dragData.isInfrastructure) {
+            this.designer.validDropZones = ['infrastructure-drop-zone'];
+            console.log('V2.3: Infrastructure item - allowing drop anywhere');
+        } else {
+            // For devices, find target rack and calculate zones
+            const dropPosition = this.designer.dragPosition;
+            if (dropPosition) {
+                const targetRack = this.designer.findRackAtPosition(dropPosition.x, dropPosition.y);
+                if (targetRack) {
+                    this.designer.validDropZones = this.designer.calculateValidDropZones(1, targetRack.id);
+                    console.log('V2.3: Device drop zones calculated:', this.designer.validDropZones.length);
+                } else {
+                    this.designer.validDropZones = [];
+                }
+            }
+        }
+        this.designer.render(); // Update visual feedback
+    }
+    
+    simulateDropEvent(originalEvent, dropPosition) {
+        console.log('V2.3: Simulating drop event with data:', this.dragData);
+        console.log('V2.3: Drop position:', dropPosition);
+        console.log('V2.3: Valid drop zones:', this.designer.validDropZones);
+        
+        // Create a synthetic event that works with existing drop handler
+        const syntheticEvent = {
+            preventDefault: () => {},
+            stopPropagation: () => {},
+            clientX: originalEvent.clientX,
+            clientY: originalEvent.clientY,
+            currentTarget: document.getElementById('rackDesignSVG'),
+            dataTransfer: {
+                getData: () => JSON.stringify(this.dragData)
+            }
+        };
+        
+        // Set the dragged device for existing compatibility
+        this.designer.draggedDevice = this.dragData;
+        
+        console.log('V2.3: About to call handleDrop with synthetic event');
+        
+        // Call existing drop handler
+        this.designer.handleDrop(syntheticEvent);
+        
+        console.log('V2.3: handleDrop call completed');
+    }
+    
+    cleanupDrag() {
+        this.isDragging = false;
+        this.dragElement = null;
+        this.dragData = null;
+        
+        // Clear the draggedDevice to stop SVG preview rendering
+        this.designer.draggedDevice = null;
+        this.designer.validDropZones = [];
+        
+        // Trigger render to clear any remaining previews
+        this.designer.render();
+        
+        // Clean up any DOM preview elements (if created)
+        if (this.previewElement && this.previewElement.parentNode) {
+            this.previewElement.parentNode.removeChild(this.previewElement);
+            this.previewElement = null;
+        }
+        
+        document.body.style.cursor = '';
+    }
+}
+
+// Enhanced Rack Designer - Version 2.3 with Modular Architecture  
 class EnhancedRackDesigner {
     constructor() {
         // Constants matching the example
@@ -14,6 +530,10 @@ class EnhancedRackDesigner {
         this.FLOOR_Y = this.CANVAS_HEIGHT - 100; // Floor is 100px from bottom
         this.SNAP_THRESHOLD = 8; // 1 inch = 8 pixels for snapping alignment
         this.PIXELS_PER_INCH = 8; // Scale factor for measurements
+        
+        // Initialize coordinate manager and custom drag system
+        this.coordinateManager = new CoordinateManager(this);
+        this.customDragManager = new CustomDragManager(this);
         
         // State
         this.racks = [
@@ -137,28 +657,44 @@ class EnhancedRackDesigner {
                                 <span class="sub-category-toggle">▼</span>
                             </div>
                             <div class="sub-category-items">
-                                <div class="equipment-item" data-type="open-rack-42u" data-category="infrastructure">
+                                <div class="equipment-item" 
+                                     data-device-type="open-rack-42u" 
+                                     data-device-name="42U Open Rack"
+                                     data-is-infrastructure="true" 
+                                     data-category="infrastructure">
                                     <div class="item-color" style="background-color: #374151;"></div>
                                     <div class="item-info">
                                         <div class="item-name">42U Open Rack</div>
                                         <div class="item-description">2-post open frame rack</div>
                                     </div>
                                 </div>
-                                <div class="equipment-item" data-type="open-rack-24u" data-category="infrastructure">
+                                <div class="equipment-item" 
+                                     data-device-type="open-rack-24u" 
+                                     data-device-name="24U Open Rack"
+                                     data-is-infrastructure="true" 
+                                     data-category="infrastructure">
                                     <div class="item-color" style="background-color: #4B5563;"></div>
                                     <div class="item-info">
                                         <div class="item-name">24U Open Rack</div>
                                         <div class="item-description">2-post open frame rack</div>
                                     </div>
                                 </div>
-                                <div class="equipment-item" data-type="open-rack-12u" data-category="infrastructure">
+                                <div class="equipment-item" 
+                                     data-device-type="open-rack-12u" 
+                                     data-device-name="12U Open Rack"
+                                     data-is-infrastructure="true" 
+                                     data-category="infrastructure">
                                     <div class="item-color" style="background-color: #6B7280;"></div>
                                     <div class="item-info">
                                         <div class="item-name">12U Open Rack</div>
                                         <div class="item-description">2-post wall mount rack</div>
                                     </div>
                                 </div>
-                                <div class="equipment-item" data-type="open-rack-9u" data-category="infrastructure">
+                                <div class="equipment-item" 
+                                     data-device-type="open-rack-9u" 
+                                     data-device-name="9U Open Rack"
+                                     data-is-infrastructure="true" 
+                                     data-category="infrastructure">
                                     <div class="item-color" style="background-color: #9CA3AF;"></div>
                                     <div class="item-info">
                                         <div class="item-name">9U Open Rack</div>
@@ -175,28 +711,44 @@ class EnhancedRackDesigner {
                                 <span class="sub-category-toggle">▼</span>
                             </div>
                             <div class="sub-category-items">
-                                <div class="equipment-item" data-type="enclosed-rack-42u" data-category="infrastructure">
+                                <div class="equipment-item" 
+                                     data-device-type="enclosed-rack-42u" 
+                                     data-device-name="42U Enclosed Rack"
+                                     data-is-infrastructure="true" 
+                                     data-category="infrastructure">
                                     <div class="item-color" style="background-color: #1F2937;"></div>
                                     <div class="item-info">
                                         <div class="item-name">42U Enclosed Rack</div>
                                         <div class="item-description">Full cabinet server rack</div>
                                     </div>
                                 </div>
-                                <div class="equipment-item" data-type="enclosed-rack-24u" data-category="infrastructure">
+                                <div class="equipment-item" 
+                                     data-device-type="enclosed-rack-24u" 
+                                     data-device-name="24U Enclosed Rack"
+                                     data-is-infrastructure="true" 
+                                     data-category="infrastructure">
                                     <div class="item-color" style="background-color: #374151;"></div>
                                     <div class="item-info">
                                         <div class="item-name">24U Enclosed Rack</div>
                                         <div class="item-description">Half height cabinet rack</div>
                                     </div>
                                 </div>
-                                <div class="equipment-item" data-type="enclosed-rack-12u" data-category="infrastructure">
+                                <div class="equipment-item" 
+                                     data-device-type="enclosed-rack-12u" 
+                                     data-device-name="12U Enclosed Rack"
+                                     data-is-infrastructure="true" 
+                                     data-category="infrastructure">
                                     <div class="item-color" style="background-color: #4B5563;"></div>
                                     <div class="item-info">
                                         <div class="item-name">12U Enclosed Rack</div>
                                         <div class="item-description">Wall mount cabinet rack</div>
                                     </div>
                                 </div>
-                                <div class="equipment-item" data-type="enclosed-rack-9u" data-category="infrastructure">
+                                <div class="equipment-item" 
+                                     data-device-type="enclosed-rack-9u" 
+                                     data-device-name="9U Enclosed Rack"
+                                     data-is-infrastructure="true" 
+                                     data-category="infrastructure">
                                     <div class="item-color" style="background-color: #6B7280;"></div>
                                     <div class="item-info">
                                         <div class="item-name">9U Enclosed Rack</div>
@@ -213,28 +765,46 @@ class EnhancedRackDesigner {
                                 <span class="sub-category-toggle">▼</span>
                             </div>
                             <div class="sub-category-items">
-                                <div class="equipment-item" data-type="vertical-manager-6" data-category="infrastructure">
+                                <div class="equipment-item" 
+                                     data-device-type="vertical-manager-6" 
+                                     data-device-name="6\" Vertical Manager"
+                                     data-is-infrastructure="true" 
+                                     data-category="infrastructure">
                                     <div class="item-color" style="background-color: #059669;"></div>
                                     <div class="item-info">
                                         <div class="item-name">6" Vertical Manager</div>
                                         <div class="item-description">Side cable management</div>
                                     </div>
                                 </div>
-                                <div class="equipment-item" data-type="vertical-manager-10" data-category="infrastructure">
+                                <div class="equipment-item" 
+                                     data-device-type="vertical-manager-10" 
+                                     data-device-name="10\" Vertical Manager"
+                                     data-is-infrastructure="true" 
+                                     data-category="infrastructure">
                                     <div class="item-color" style="background-color: #047857;"></div>
                                     <div class="item-info">
                                         <div class="item-name">10" Vertical Manager</div>
                                         <div class="item-description">Large side cable management</div>
                                     </div>
                                 </div>
-                                <div class="equipment-item" data-type="horizontal-manager-1u" data-category="infrastructure" data-height="1">
+                                <div class="equipment-item" 
+                                     data-device-type="horizontal-manager-1u" 
+                                     data-device-name="1U Horizontal Manager"
+                                     data-is-infrastructure="true" 
+                                     data-category="infrastructure" 
+                                     data-height="1">
                                     <div class="item-color" style="background-color: #0891B2;"></div>
                                     <div class="item-info">
                                         <div class="item-name">1U Horizontal Manager</div>
                                         <div class="item-description">Front cable management</div>
                                     </div>
                                 </div>
-                                <div class="equipment-item" data-type="horizontal-manager-2u" data-category="infrastructure" data-height="2">
+                                <div class="equipment-item" 
+                                     data-device-type="horizontal-manager-2u" 
+                                     data-device-name="2U Horizontal Manager"
+                                     data-is-infrastructure="true" 
+                                     data-category="infrastructure" 
+                                     data-height="2">
                                     <div class="item-color" style="background-color: #1D4ED8;"></div>
                                     <div class="item-info">
                                         <div class="item-name">2U Horizontal Manager</div>
@@ -253,28 +823,48 @@ class EnhancedRackDesigner {
                         <span class="category-toggle">▼</span>
                     </div>
                     <div class="category-items">
-                        <div class="equipment-item" data-type="blanking-plate-1u" data-category="misc" data-height="1">
+                        <div class="equipment-item" 
+                             data-device-type="blanking-plate-1u" 
+                             data-device-name="1U Blanking Plate"
+                             data-is-infrastructure="true" 
+                             data-category="misc" 
+                             data-height="1">
                             <div class="item-color" style="background-color: #7C3AED;"></div>
                             <div class="item-info">
                                 <div class="item-name">1U Blanking Plate</div>
                                 <div class="item-description">Rack filler panel</div>
                             </div>
                         </div>
-                        <div class="equipment-item" data-type="blanking-plate-2u" data-category="misc" data-height="2">
+                        <div class="equipment-item" 
+                             data-device-type="blanking-plate-2u" 
+                             data-device-name="2U Blanking Plate"
+                             data-is-infrastructure="true" 
+                             data-category="misc" 
+                             data-height="2">
                             <div class="item-color" style="background-color: #BE185D;"></div>
                             <div class="item-info">
                                 <div class="item-name">2U Blanking Plate</div>
                                 <div class="item-description">Rack filler panel</div>
                             </div>
                         </div>
-                        <div class="equipment-item" data-type="empty-space-1u" data-category="misc" data-height="1">
+                        <div class="equipment-item" 
+                             data-device-type="empty-space-1u" 
+                             data-device-name="1U Empty Space"
+                             data-is-infrastructure="true" 
+                             data-category="misc" 
+                             data-height="1">
                             <div class="item-color" style="background-color: #F3F4F6;"></div>
                             <div class="item-info">
                                 <div class="item-name">1U Empty Space</div>
                                 <div class="item-description">Reserved rack unit</div>
                             </div>
                         </div>
-                        <div class="equipment-item" data-type="shelf-1u" data-category="misc" data-height="1">
+                        <div class="equipment-item" 
+                             data-device-type="shelf-1u" 
+                             data-device-name="1U Shelf"
+                             data-is-infrastructure="true" 
+                             data-category="misc" 
+                             data-height="1">
                             <div class="item-color" style="background-color: #92400E;"></div>
                             <div class="item-info">
                                 <div class="item-name">1U Shelf</div>
@@ -291,14 +881,21 @@ class EnhancedRackDesigner {
                         <span class="category-toggle">▼</span>
                     </div>
                     <div class="category-items">
-                        <div class="equipment-item" data-type="cisco-c9200l-24t-4g" data-height="1">
+                        <div class="equipment-item" 
+                             data-device-type="cisco-c9200l-24t-4g" 
+                             data-device-name="Cisco 24-Port Switch"
+                             data-is-infrastructure="false">
                             <div class="item-color" style="background-color: #D1D5DB;"></div>
                             <div class="item-info">
                                 <div class="item-name">Cisco 24-Port Switch</div>
                                 <div class="item-description">1U • 24 ports</div>
                             </div>
                         </div>
-                        <div class="equipment-item" data-type="cisco-c9200l-48p-4g" data-height="1">
+                        <div class="equipment-item" 
+                             data-device-type="cisco-c9200l-48p-4g" 
+                             data-device-name="Cisco 48-Port Switch"
+                             data-is-infrastructure="false" 
+                             data-height="1">
                             <div class="item-color" style="background-color: #D1D5DB;"></div>
                             <div class="item-info">
                                 <div class="item-name">Cisco 48-Port Switch</div>
@@ -397,7 +994,11 @@ class EnhancedRackDesigner {
                         <span class="category-toggle">▼</span>
                     </div>
                     <div class="category-items">
-                        <div class="equipment-item" data-type="test-crosshair" data-height="1" data-category="infrastructure">
+                        <div class="equipment-item" 
+                             data-device-type="test-crosshair" 
+                             data-device-name="Test Crosshair"
+                             data-is-infrastructure="true" 
+                             data-category="infrastructure">
                             <div class="item-color" style="background-color: #FF0000;"></div>
                             <div class="item-info">
                                 <div class="item-name">Test Crosshair</div>
@@ -434,17 +1035,8 @@ class EnhancedRackDesigner {
         svg.addEventListener('mouseleave', (e) => this.handleMouseUp(e));
         svg.addEventListener('click', (e) => this.handleClick(e));
 
-        // Drag and drop - V2.3: Added dragenter for Edge compatibility
-        svg.addEventListener('dragenter', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            e.dataTransfer.dropEffect = 'copy';
-            console.log('V2.3: dragenter - allowing drop');
-        });
-        svg.addEventListener('dragover', (e) => this.handleDragOver(e));
-        svg.addEventListener('drop', (e) => this.handleDrop(e));
-        svg.addEventListener('dragleave', (e) => this.handleDragLeave(e));
-        document.addEventListener('dragend', (e) => this.handleDragEnd(e));
+        // V2.3: Disabled HTML5 drag events - using CustomDragManager instead
+        // Keeping handleDrop method for compatibility with custom drag system
 
         // Sidebar interactions
         this.setupSidebarEvents();
@@ -499,11 +1091,8 @@ class EnhancedRackDesigner {
             });
         });
 
-        // Equipment items drag
-        document.querySelectorAll('.equipment-item').forEach(item => {
-            item.setAttribute('draggable', 'true');
-            item.addEventListener('dragstart', (e) => this.handleDragStart(e));
-        });
+        // V2.3: Custom drag system replaces HTML5 drag - no setup needed
+        // Equipment items will be handled by CustomDragManager
     }
 
     toggleCategory(category) {
@@ -586,7 +1175,9 @@ class EnhancedRackDesigner {
             transform: translate(-50%, -50%);
             display: none;
             opacity: 0.8;
-            /* PIXEL-PERFECT: No additional scaling - size is pre-calculated to match canvas */
+            border: 3px solid red;
+            background: rgba(255, 255, 255, 0.1);
+            /* PIXEL-PERFECT: Preview centered on cursor via translate(-50%, -50%) */
             /* SVG inside already sized to visual dimensions (raw_size * 0.7) */
         `;
         
@@ -630,35 +1221,37 @@ class EnhancedRackDesigner {
             const rawWidth = isEnclosed ? rackWidth + 100 : rackWidth + 30; // Raw SVG dimensions
             const rawHeight = rackHeight * this.UNIT_HEIGHT + 40; // Raw SVG height
             
-            // The key insight: placed racks are scaled by 0.7 in the canvas transform
-            // So visual size = rawWidth * 0.7, rawHeight * 0.7
-            // Drag preview should match this EXACT visual size (reduced by 2% for better fit)
-            const visualWidth = rawWidth * 0.51;  // Perfect drag preview size
-            const visualHeight = rawHeight * 0.51; // Perfect drag preview size
+            // V2.3: Match drag preview size EXACTLY to placed rack visual size
+            // Placed racks use the current zoom level (this.zoom), default = 0.7
+            // Drag preview should match this EXACT visual size with current zoom
+            const currentScale = this.zoom;
+            const visualWidth = rawWidth * currentScale;  // Exact visual size
+            const visualHeight = rawHeight * currentScale; // Exact visual size
             
-            console.log('=== PIXEL-PERFECT SCALING FIX ===');
+            // V2.3: Size container to match ACTUAL rendered rack dimensions
+            // Use the exact same dimensions as the renderRack function uses
+            const rackBoundsWidth = isEnclosed ? this.RACK_WIDTH + 100 : this.RACK_WIDTH + 30;
+            const rackBoundsHeight = rackHeight * this.UNIT_HEIGHT; // Exact same as renderRack function
+            
+            // Scale container to match current zoom level EXACTLY
+            const containerWidth = rackBoundsWidth * currentScale;
+            const containerHeight = rackBoundsHeight * currentScale;
+            
+            console.log('🔍 === DRAG PREVIEW SCALING DEBUG === 🔍');
             console.log('Rack type:', rackHeight + 'U', isEnclosed ? 'enclosed' : 'open');
             console.log('Raw SVG dimensions:', { width: rawWidth, height: rawHeight });
-            console.log('Canvas transform scale: 0.7');
-            console.log('Visual size (what user sees):', { width: visualWidth, height: visualHeight });
-            console.log('Drag preview size (matching visual):', { width: visualWidth, height: visualHeight });
-            console.log('=====================================');
-            
-            // V2.3: Size container to exact rack dimensions for perfect centering
-            // Calculate actual rack bounds (including posts/cabinet)
-            const rackBoundsWidth = isEnclosed ? this.RACK_WIDTH + 100 : this.RACK_WIDTH + 30;
-            const rackBoundsHeight = rackHeight * this.UNIT_HEIGHT + 40;
-            
-            // Scale container to match visual size
-            const containerWidth = rackBoundsWidth * 0.51;
-            const containerHeight = rackBoundsHeight * 0.51;
+            console.log('this.zoom value:', this.zoom);
+            console.log('Canvas transform scale:', currentScale);
+            console.log('Calculated preview size:', { width: visualWidth, height: visualHeight });
+            console.log('Container size:', { width: containerWidth, height: containerHeight });
+            console.log('========================================');
             
             svg.setAttribute('width', containerWidth + 'px');
             svg.setAttribute('height', containerHeight + 'px');
             
-            // Set viewBox to show exactly the rack bounds
+            // Set viewBox to show exactly the rendered rack bounds
             const viewBoxX = isEnclosed ? -50 : -15;
-            const viewBoxY = -10;
+            const viewBoxY = 0; // Start at 0 to match actual rack rendering position
             svg.setAttribute('viewBox', `${viewBoxX} ${viewBoxY} ${rackBoundsWidth} ${rackBoundsHeight}`);
             
         } else {
@@ -686,11 +1279,12 @@ class EnhancedRackDesigner {
             // Remove the temporary rack
             this.racks = this.racks.filter(r => r.id !== 'preview-rack');
             
-            // PIXEL-PERFECT FIX: Match visual size of devices in canvas
+            // V2.3: Match device preview to current zoom level EXACTLY
             const rawWidth = 259; // Device width from renderDevice
             const rawHeight = (this.draggedDevice.height || 1) * 24;
-            const visualWidth = rawWidth * 0.51;  // Perfect drag preview size
-            const visualHeight = rawHeight * 0.51; // Perfect drag preview size
+            const currentScale = this.zoom;
+            const visualWidth = rawWidth * currentScale;  // Exact visual size
+            const visualHeight = rawHeight * currentScale; // Exact visual size
             
             svg.setAttribute('width', visualWidth + 'px');
             svg.setAttribute('height', visualHeight + 'px');
@@ -744,6 +1338,8 @@ class EnhancedRackDesigner {
             this.customPreview.style.display = 'block';
             this.customPreview.style.left = e.clientX + 'px';
             this.customPreview.style.top = e.clientY + 'px';
+            console.log('🔍 Preview position:', { x: e.clientX, y: e.clientY, display: this.customPreview.style.display });
+            console.log('🔍 Container transform:', this.customPreview.style.transform);
         }
         
         if (!this.draggedDevice) return;
@@ -801,7 +1397,8 @@ class EnhancedRackDesigner {
     handleDrop(e) {
         e.preventDefault();
         e.stopPropagation();
-        console.log('=== DROP EVENT FIRED ===');
+        console.log('🎯 === V2.3 DROP EVENT FIRED === 🎯');
+        console.log('✅ SUCCESS: Drop event fired successfully!');
         console.log('Drop detected - draggedDevice:', this.draggedDevice);
 
         // Try to get device from instance variable first, then from dataTransfer
@@ -824,22 +1421,13 @@ class EnhancedRackDesigner {
             return;
         }
 
-        // Calculate final drop position using SVG coordinate system
-        const svg = e.currentTarget;
-        
-        // Create an SVG point and transform it properly
-        const svgPoint = svg.createSVGPoint();
-        svgPoint.x = e.clientX;
-        svgPoint.y = e.clientY;
-        
-        // Transform the point from screen coordinates to SVG coordinates
-        const svgCoords = svgPoint.matrixTransform(svg.getScreenCTM().inverse());
-        
-        // Apply our custom pan/zoom transform
-        const rawX = (svgCoords.x - this.pan.x) / this.zoom;
-        const rawY = (svgCoords.y - this.pan.y) / this.zoom;
+        // V2.3: Use CoordinateManager for precise positioning
+        const dropPosition = this.coordinateManager.calculateDropPosition(e);
+        const rawX = dropPosition.x;
+        const rawY = dropPosition.y;
         
         // Enhanced diagnostic logging
+        const svg = e.currentTarget;
         console.log('=== ENHANCED DROP COORDINATE DEBUG ===');
         console.log('Device type:', deviceData.type);
         console.log('Is infrastructure:', deviceData.isInfrastructure);
@@ -847,11 +1435,10 @@ class EnhancedRackDesigner {
         console.log('SVG element rect:', svg.getBoundingClientRect());
         console.log('SVG viewBox:', svg.getAttribute('viewBox'));
         console.log('SVG client size:', svg.clientWidth, 'x', svg.clientHeight);
-        console.log('SVG transformed coords (via getScreenCTM):', svgCoords.x, svgCoords.y);
+        console.log('Drop position calculated:', dropPosition);
         console.log('Current pan:', this.pan);
         console.log('Current zoom:', this.zoom);
-        console.log('Calculated final coords:', rawX, rawY);
-        console.log('Target coordinates (600, 400) - distance:', Math.sqrt(Math.pow(rawX - 600, 2) + Math.pow(rawY - 400, 2)));
+        console.log('Final coords:', rawX, rawY);
         
         // Special logging for test crosshair
         if (deviceData.type === 'test-crosshair') {
@@ -1036,6 +1623,30 @@ class EnhancedRackDesigner {
                 });
                 console.log('Type of rack:', { rackHeight, isEnclosed, type });
                 console.log('Floor constraint applied:', rackHeight === 42);
+                
+                // Apply rack alignment/snapping logic
+                const snapResult = this.applyRackAlignment(newX, newY, rackHeight, isEnclosed, rackPixelHeight);
+                
+                // Check if placement was rejected due to floor constraint
+                if (snapResult.rejected) {
+                    console.log('❌ RACK PLACEMENT REJECTED:', {
+                        reason: snapResult.snapType,
+                        attemptedPosition: { x: newX, y: newY },
+                        floorLevel: this.FLOOR_Y,
+                        itemHeight: rackPixelHeight
+                    });
+                    return; // Cancel placement
+                }
+                
+                newX = snapResult.x;
+                newY = snapResult.y;
+                if (snapResult.snapped) {
+                    console.log('🧲 RACK SNAPPING APPLIED:', {
+                        originalPosition: { x: newX, y: newY },
+                        snappedPosition: { x: snapResult.x, y: snapResult.y },
+                        snapType: snapResult.snapType
+                    });
+                }
             } else {
                 // Original complex positioning logic
                 const existingRacks = this.racks;
@@ -1114,15 +1725,6 @@ class EnhancedRackDesigner {
                             return rackDistance < 400 || dropDistance < 400; // Increased to 400px detection range
                         });
                         
-                        console.log('Managers near rack or drop position:', { 
-                            nearestRackId: nearestRack.id, 
-                            nearestRackX: nearestRack.x,
-                            dropX: x,
-                            managersNearRack: managersNearRack.length, 
-                            allManagers: this.managers.length,
-                            allManagersData: this.managers.map(m => ({ id: m.id, x: m.x, width: m.width, rackDistance: Math.abs(m.x - nearestRack.x), dropDistance: Math.abs(m.x - x) })),
-                            managers: managersNearRack.map(m => ({ id: m.id, x: m.x, width: m.width }))
-                        });
                         
                         if (managersNearRack.length > 0) {
                             // There are managers near this rack, position carefully
@@ -1136,13 +1738,6 @@ class EnhancedRackDesigner {
                                 const rackPostExtension = isEnclosed ? 50 : 15; // Posts extend from rack coordinate
                                 const rackMainWidth = this.RACK_WIDTH; // The main rack width without posts
                                 newX = leftmostManager.x - rackMainWidth - rackPostExtension;
-                                console.log('Left manager positioning:', { 
-                                    leftmostManager: leftmostManager.id, 
-                                    managerX: leftmostManager.x, 
-                                    rackMainWidth, 
-                                    rackPostExtension, 
-                                    newX 
-                                });
                             } else {
                                 // Placing to the right - find rightmost manager and place rack to its right
                                 const rightmostManager = managersNearRack.reduce((rightmost, manager) => 
@@ -1152,14 +1747,6 @@ class EnhancedRackDesigner {
                                 // Account for rack post extension to avoid overlap
                                 const rackPostExtension = isEnclosed ? 50 : 15; // Posts extend left of rack coordinate
                                 newX = rightEdge + rackPostExtension;
-                                console.log('Right-side manager positioning:', { 
-                                    rightmostManager: rightmostManager.id, 
-                                    managerX: rightmostManager.x,
-                                    managerWidth, 
-                                    rightEdge,
-                                    rackPostExtension, 
-                                    newX 
-                                });
                             }
                         } else {
                             // No managers near this rack, use edge-to-edge positioning
@@ -1168,14 +1755,6 @@ class EnhancedRackDesigner {
                                 const rackPostExtension = isEnclosed ? 50 : 15;
                                 const rackMainWidth = this.RACK_WIDTH;
                                 newX = nearestRack.x - rackMainWidth - rackPostExtension;
-                                console.log('LEFT placement (no managers):', { 
-                                    dropX: x, 
-                                    rackCenterX, 
-                                    nearestRackX: nearestRack.x,
-                                    rackPostExtension,
-                                    rackMainWidth,
-                                    calculatedX: newX 
-                                });
                             } else {
                                 const nearestRackWidth = getNearestRackWidth();
                                 newX = nearestRack.x + nearestRackWidth; // Touch right edge
@@ -1189,14 +1768,6 @@ class EnhancedRackDesigner {
                             const newRackLeftEdge = nearestRackLeftEdge - newRackWidth;
                             // Convert from left edge to rack x position
                             newX = newRackLeftEdge + (isEnclosed ? 50 : 15);
-                            console.log('LEFT placement (edge-to-edge):', { 
-                                dropX: x, 
-                                rackCenterX, 
-                                nearestRackLeftEdge, 
-                                newRackWidth, 
-                                newRackLeftEdge, 
-                                calculatedX: newX 
-                            });
                         } else {
                             // Place to the right - new rack's left edge should touch nearest rack's right edge  
                             // Convert from edge position to rack x position
@@ -1312,20 +1883,48 @@ class EnhancedRackDesigner {
             // Position manager to snap to the left edge of the nearest rack
             const nearestRack = this.findNearestRack(x, y);
             let newX = x;
-            // Apply floor constraint for managers - align with nearest rack's floor level
             let newY = y;
+            
+            // Determine manager dimensions
+            const managerWidth = type === 'vertical-manager-10' ? this.MANAGER_WIDTH_10 : this.MANAGER_WIDTH_6;
+            const managerHeight = 42 * this.UNIT_HEIGHT; // Default height for 42U managers
+            
+            // FLOOR CONSTRAINT: Check if manager would go below floor
+            const minAllowedY = this.FLOOR_Y - managerHeight;
+            const FLOOR_SNAP_DISTANCE = 100; // More generous for floor snapping
+            
+            if (newY > minAllowedY) {
+                // Placement would go below floor - try to snap up to floor
+                if (Math.abs(newY - minAllowedY) <= FLOOR_SNAP_DISTANCE) {
+                    // Within snapping range - snap up to floor level
+                    newY = minAllowedY;
+                    console.log('🏢 MANAGER SNAPPED TO FLOOR:', { 
+                        originalY: y, 
+                        snappedY: newY,
+                        snapDistance: Math.abs(y - minAllowedY)
+                    });
+                } else {
+                    // Too far below floor - reject placement
+                    console.log('❌ MANAGER PLACEMENT TOO FAR BELOW FLOOR:', {
+                        attemptedY: newY,
+                        floorLevel: this.FLOOR_Y,
+                        managerHeight: managerHeight,
+                        minAllowedY: minAllowedY,
+                        distance: Math.abs(newY - minAllowedY),
+                        maxSnapDistance: FLOOR_SNAP_DISTANCE
+                    });
+                    return; // Cancel placement
+                }
+            }
+            
+            // Additional alignment with nearest rack
             if (nearestRack) {
                 const rackBottomY = nearestRack.y + (nearestRack.height * this.UNIT_HEIGHT);
-                newY = Math.min(y, rackBottomY);
+                newY = Math.min(newY, rackBottomY);
             }
-
-            console.log('Attempting to place vertical manager:', { type, x, y, nearestRack });
-
-            // Determine manager width based on type
-            const managerWidth = type === 'vertical-manager-10' ? this.MANAGER_WIDTH_10 : this.MANAGER_WIDTH_6;
             
-            // Auto-adjust manager height based on the rack it's mounted to
-            let managerHeight = 42; // Default height for 42U racks
+            // Auto-adjust manager height based on the rack it's mounted to (in rack units)
+            let managerHeightRU = 42; // Default height for 42U racks
 
             if (nearestRack) {
                 console.log('Rack details:', { 
@@ -1339,7 +1938,7 @@ class EnhancedRackDesigner {
                 // Vertical managers can mount to any rack type and size
 
                 // Auto-adjust manager height to match the rack it's mounted to
-                managerHeight = nearestRack.height || 42;
+                managerHeightRU = nearestRack.height || 42;
 
                 // Determine if placing on left or right side based on drop position
                 const rackCenterX = nearestRack.x + this.RACK_WIDTH / 2;
@@ -1383,16 +1982,15 @@ class EnhancedRackDesigner {
                 type: 'manager',
                 managerType: type,
                 width: managerWidth,
-                height: managerHeight,
+                height: managerHeightRU,
                 x: newX,
                 y: newY,
                 mountedToRack: nearestRack ? nearestRack.id : null
             };
 
             this.managers.push(newManager);
-            console.log('Added new manager:', newManager);
         } else if (type.startsWith('horizontal-manager') || type.startsWith('blanking-plate') || type.startsWith('empty-space') || type.startsWith('shelf')) {
-            // Handle horizontal managers and blanking plates - these go into racks like devices
+            // Handle blanking plates and other items - these go into racks like devices
             const targetRack = this.findRackAtPosition(x, y);
             if (targetRack) {
                 const relativeY = y - targetRack.y;
@@ -1416,6 +2014,178 @@ class EnhancedRackDesigner {
                 console.log('Added infrastructure device:', newDevice);
             }
         }
+        
+        // Ensure the view is updated immediately after adding infrastructure
+        this.render();
+    }
+    
+    applyRackAlignment(x, y, height, isEnclosed, pixelHeight) {
+        const ATTRACTION_DISTANCE = 25; // pixels - how close racks need to be to feel "attraction"
+        const MAX_SNAP_DISTANCE = 12; // pixels - maximum distance we'll move a rack (small adjustment)
+        
+        let bestX = x;
+        let bestY = y;
+        let snapped = false;
+        let snapType = '';
+        
+        // FLOOR CONSTRAINT: Check if placement would go below floor
+        const minAllowedY = this.FLOOR_Y - pixelHeight;
+        const FLOOR_SNAP_DISTANCE = 100; // More generous for floor snapping - 100px range
+        
+        if (y > minAllowedY) {
+            // Placement would go below floor - try to snap up to floor
+            if (Math.abs(y - minAllowedY) <= FLOOR_SNAP_DISTANCE) {
+                // Within snapping range - snap up to floor level
+                bestY = minAllowedY;
+                snapped = true;
+                snapType = 'snap-to-floor';
+                console.log('🏢 FLOOR SNAP APPLIED:', { 
+                    originalY: y, 
+                    floorY: this.FLOOR_Y, 
+                    itemHeight: pixelHeight, 
+                    snappedY: minAllowedY,
+                    snapDistance: Math.abs(y - minAllowedY)
+                });
+            } else {
+                // Too far below floor - reject placement
+                console.log('❌ PLACEMENT TOO FAR BELOW FLOOR:', {
+                    attemptedY: y,
+                    minAllowedY: minAllowedY,
+                    distance: Math.abs(y - minAllowedY),
+                    maxSnapDistance: FLOOR_SNAP_DISTANCE
+                });
+                return {
+                    x: x,
+                    y: y,
+                    snapped: false,
+                    snapType: 'rejected-below-floor',
+                    rejected: true
+                };
+            }
+        }
+        
+        // Get current rack dimensions for alignment calculations
+        const currentRackWidth = isEnclosed ? this.RACK_WIDTH + 100 : this.RACK_WIDTH + 30;
+        const currentLeftEdge = isEnclosed ? x - 50 : x - 15;
+        const currentRightEdge = currentLeftEdge + currentRackWidth;
+        
+        // Check alignment with existing racks
+        for (const existingRack of this.racks) {
+            const existingRackWidth = existingRack.isEnclosed ? this.RACK_WIDTH + 100 : this.RACK_WIDTH + 30;
+            const existingPixelHeight = existingRack.height * this.UNIT_HEIGHT;
+            
+            // Calculate existing rack edges
+            const existingLeftEdge = existingRack.isEnclosed ? existingRack.x - 50 : existingRack.x - 15;
+            const existingRightEdge = existingLeftEdge + existingRackWidth;
+            const existingTopEdge = existingRack.y;
+            const existingBottomEdge = existingRack.y + existingPixelHeight;
+            
+            // VERTICAL STACKING - racks want to stack above/below each other
+            const xAlignmentOffset = Math.abs(currentLeftEdge - existingLeftEdge);
+            if (xAlignmentOffset <= ATTRACTION_DISTANCE) {
+                // Check if we can make a small X adjustment to align perfectly
+                const snapDistance = Math.abs(x - (isEnclosed ? existingLeftEdge + 50 : existingLeftEdge + 15));
+                if (snapDistance <= MAX_SNAP_DISTANCE) {
+                    bestX = isEnclosed ? existingLeftEdge + 50 : existingLeftEdge + 15;
+                    snapped = true;
+                    snapType = 'vertical-column-alignment';
+                }
+                
+                // Check for close vertical stacking
+                const gapAbove = Math.abs((y + pixelHeight) - existingTopEdge);
+                const gapBelow = Math.abs(y - existingBottomEdge);
+                
+                if (gapAbove <= ATTRACTION_DISTANCE && gapAbove <= MAX_SNAP_DISTANCE) {
+                    bestY = existingTopEdge - pixelHeight;
+                    snapped = true;
+                    snapType = 'stack-above';
+                } else if (gapBelow <= ATTRACTION_DISTANCE && gapBelow <= MAX_SNAP_DISTANCE) {
+                    bestY = existingBottomEdge;
+                    snapped = true;
+                    snapType = 'stack-below';
+                }
+            }
+            
+            // HORIZONTAL SIDE-BY-SIDE - racks want to line up horizontally
+            const yAlignmentOffset = Math.abs(y - existingTopEdge);
+            if (yAlignmentOffset <= ATTRACTION_DISTANCE) {
+                // Check if we can make a small Y adjustment to align perfectly
+                const snapDistance = Math.abs(y - existingTopEdge);
+                if (snapDistance <= MAX_SNAP_DISTANCE) {
+                    bestY = existingTopEdge;
+                    snapped = true;
+                    snapType = 'horizontal-row-alignment';
+                }
+                
+                // Check for close horizontal spacing
+                const gapLeft = Math.abs(currentRightEdge - existingLeftEdge);
+                const gapRight = Math.abs(currentLeftEdge - existingRightEdge);
+                
+                if (gapLeft <= ATTRACTION_DISTANCE && gapLeft <= MAX_SNAP_DISTANCE) {
+                    bestX = isEnclosed ? existingLeftEdge - currentRackWidth + 50 : existingLeftEdge - currentRackWidth + 15;
+                    snapped = true;
+                    snapType = 'side-by-side-left';
+                } else if (gapRight <= ATTRACTION_DISTANCE && gapRight <= MAX_SNAP_DISTANCE) {
+                    bestX = isEnclosed ? existingRightEdge + 50 : existingRightEdge + 15;
+                    snapped = true;
+                    snapType = 'side-by-side-right';
+                }
+            }
+        }
+        
+        // Check alignment with vertical managers
+        for (const manager of this.managers) {
+            if (manager.managerType && manager.managerType.startsWith('vertical-manager')) {
+                const managerLeftEdge = manager.x;
+                const managerRightEdge = manager.x + manager.width;
+                const managerTopEdge = manager.y;
+                
+                // Check if rack wants to snap next to the manager (small gap closure)
+                const yAlignmentOffset = Math.abs(y - managerTopEdge);
+                
+                // Check both left and right side snapping
+                const gapToRightSide = Math.abs(currentLeftEdge - managerRightEdge);  // Rack to right of manager
+                const gapToLeftSide = Math.abs(currentRightEdge - managerLeftEdge);   // Rack to left of manager
+                
+                // Separate checks for Y and X alignment - don't require both
+                
+                // Y alignment check - align rack top with manager top
+                if (yAlignmentOffset <= ATTRACTION_DISTANCE && yAlignmentOffset <= MAX_SNAP_DISTANCE) {
+                    bestY = managerTopEdge;
+                    snapped = true;
+                    snapType = 'align-with-manager';
+                }
+                
+                // X alignment check - place rack next to manager (either side)
+                if (gapToRightSide <= ATTRACTION_DISTANCE && gapToRightSide <= MAX_SNAP_DISTANCE) {
+                    // Snap to right side of manager
+                    bestX = isEnclosed ? managerRightEdge + 50 : managerRightEdge + 15;
+                    snapped = true;
+                    snapType = 'snap-to-manager-right';
+                } else if (gapToLeftSide <= ATTRACTION_DISTANCE && gapToLeftSide <= MAX_SNAP_DISTANCE) {
+                    // Snap to left side of manager
+                    const rackWidth = isEnclosed ? this.RACK_WIDTH + 100 : this.RACK_WIDTH + 30;
+                    const rackPostExtension = isEnclosed ? 50 : 15;
+                    bestX = managerLeftEdge - rackWidth + rackPostExtension;
+                    snapped = true;
+                    snapType = 'snap-to-manager-left';
+                }
+                
+                // If both alignments happen, it's a perfect manager snap
+                const perfectRightSnap = (yAlignmentOffset <= MAX_SNAP_DISTANCE) && (gapToRightSide <= MAX_SNAP_DISTANCE);
+                const perfectLeftSnap = (yAlignmentOffset <= MAX_SNAP_DISTANCE) && (gapToLeftSide <= MAX_SNAP_DISTANCE);
+                if (perfectRightSnap || perfectLeftSnap) {
+                    snapType = perfectRightSnap ? 'perfect-manager-snap-right' : 'perfect-manager-snap-left';
+                }
+            }
+        }
+        
+        return {
+            x: bestX,
+            y: bestY,
+            snapped: snapped,
+            snapType: snapType
+        };
     }
 
     addDevice(draggedDevice, x, y) {
@@ -1851,8 +2621,10 @@ class EnhancedRackDesigner {
 
         // Render racks
         console.log('V2.3: About to render racks. Count:', this.racks.length);
+        console.log('🔍 PLACED RACK SCALE DEBUG: this.zoom =', this.zoom);
         this.racks.forEach((rack, index) => {
             console.log(`V2.3: Rendering rack ${index}:`, rack);
+            console.log(`🔍 Rack ${index} will be scaled by: ${this.zoom}`);
             this.renderRack(mainGroup, rack);
         });
 
@@ -1866,11 +2638,10 @@ class EnhancedRackDesigner {
         
         // V2.3: Diagnostic target removed
 
-        // OLD SVG DRAG PREVIEW DISABLED - using custom DOM preview now
-        // if (this.draggedDevice) {
-        //     this.renderDragPreview(mainGroup);
-        //     this.renderCursorDebug(mainGroup);
-        // }
+        // V2.3: SVG drag preview enabled (like v2.2 working version)
+        if (this.draggedDevice) {
+            this.renderDragPreview(mainGroup);
+        }
     }
     
     // V2.3: Diagnostic target method removed
@@ -2251,13 +3022,7 @@ class EnhancedRackDesigner {
         mountingArea.setAttribute('rx', '2');
         parent.appendChild(mountingArea);
         
-        // Add feet for all enclosed racks (since all racks now mount to floor)
-        // Only show feet for bottom rack in a stack
-        const shouldHaveFeet = rack.mounting === 'floor' || rack.mounting === 'stack-below';
-        
-        if (shouldHaveFeet) {
-            this.renderCabinetFeet(parent, cabinetX, rack.y + cabinetHeight - 20, cabinetWidth);
-        }
+        // Feet removed from enclosed racks per user request
     }
     
     renderCabinetFeet(parent, cabinetX, feetY, cabinetWidth) {
@@ -2305,7 +3070,7 @@ class EnhancedRackDesigner {
         rect.setAttribute('x', manager.x);
         rect.setAttribute('y', manager.y - 5);
         rect.setAttribute('width', managerWidth);
-        rect.setAttribute('height', managerHeight * this.UNIT_HEIGHT + 5);
+        rect.setAttribute('height', manager.height * this.UNIT_HEIGHT + 5);
         rect.setAttribute('fill', '#374151');
         rect.setAttribute('rx', '6');
         managerGroup.appendChild(rect);
@@ -2316,7 +3081,7 @@ class EnhancedRackDesigner {
             highlight.setAttribute('x', manager.x - 3);
             highlight.setAttribute('y', manager.y - 8);
             highlight.setAttribute('width', managerWidth + 6);
-            highlight.setAttribute('height', tallestRackHeight * this.UNIT_HEIGHT + 11);
+            highlight.setAttribute('height', manager.height * this.UNIT_HEIGHT + 11);
             highlight.setAttribute('fill', 'none');
             highlight.setAttribute('stroke', '#3B82F6');
             highlight.setAttribute('stroke-width', '3');

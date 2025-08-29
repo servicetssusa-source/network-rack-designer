@@ -86,6 +86,120 @@ class EnhancedEquipmentLibrary {
                     description: 'Diagnostic tool for testing coordinate placement',
                     isInfrastructure: true
                 }
+            },
+            infrastructure: {
+                // Open Frame Racks
+                'open-rack-42u': {
+                    name: '42U Open Rack',
+                    rackUnits: 42,
+                    category: 'infrastructure',
+                    description: '2-post open frame rack',
+                    isInfrastructure: true,
+                    rackType: 'open',
+                    height: 42
+                },
+                'open-rack-24u': {
+                    name: '24U Open Rack', 
+                    rackUnits: 24,
+                    category: 'infrastructure',
+                    description: '2-post open frame rack',
+                    isInfrastructure: true,
+                    rackType: 'open',
+                    height: 24
+                },
+                'open-rack-12u': {
+                    name: '12U Open Rack',
+                    rackUnits: 12, 
+                    category: 'infrastructure',
+                    description: '2-post wall mount rack',
+                    isInfrastructure: true,
+                    rackType: 'open',
+                    height: 12
+                },
+                'open-rack-9u': {
+                    name: '9U Open Rack',
+                    rackUnits: 9,
+                    category: 'infrastructure', 
+                    description: '2-post wall mount rack',
+                    isInfrastructure: true,
+                    rackType: 'open',
+                    height: 9
+                },
+                // Enclosed Racks
+                'enclosed-rack-42u': {
+                    name: '42U Enclosed Rack',
+                    rackUnits: 42,
+                    category: 'infrastructure',
+                    description: 'Full cabinet server rack',
+                    isInfrastructure: true,
+                    rackType: 'enclosed',
+                    height: 42
+                },
+                'enclosed-rack-24u': {
+                    name: '24U Enclosed Rack',
+                    rackUnits: 24,
+                    category: 'infrastructure',
+                    description: 'Half height cabinet rack', 
+                    isInfrastructure: true,
+                    rackType: 'enclosed',
+                    height: 24
+                },
+                'enclosed-rack-12u': {
+                    name: '12U Enclosed Rack',
+                    rackUnits: 12,
+                    category: 'infrastructure',
+                    description: 'Wall mount cabinet rack',
+                    isInfrastructure: true,
+                    rackType: 'enclosed', 
+                    height: 12
+                },
+                'enclosed-rack-9u': {
+                    name: '9U Enclosed Rack',
+                    rackUnits: 9,
+                    category: 'infrastructure',
+                    description: 'Wall mount cabinet rack',
+                    isInfrastructure: true,
+                    rackType: 'enclosed',
+                    height: 9
+                },
+                // Vertical Managers
+                'vertical-manager-6': {
+                    name: '6" Vertical Manager',
+                    rackUnits: 42,
+                    category: 'infrastructure',
+                    description: 'Side cable management',
+                    isInfrastructure: true,
+                    managerType: 'vertical',
+                    width: 80
+                },
+                'vertical-manager-10': {
+                    name: '10" Vertical Manager', 
+                    rackUnits: 42,
+                    category: 'infrastructure',
+                    description: 'Large side cable management',
+                    isInfrastructure: true,
+                    managerType: 'vertical',
+                    width: 133
+                },
+                // Horizontal Managers (rack-mounted devices)
+                'horizontal-manager-1u': {
+                    name: '1U Horizontal Manager',
+                    rackUnits: 1,
+                    category: 'infrastructure',
+                    description: 'Front cable management',
+                    isInfrastructure: true,
+                    managerType: 'horizontal',
+                    height: 1
+                },
+                'horizontal-manager-2u': {
+                    name: '2U Horizontal Manager',
+                    rackUnits: 2,
+                    category: 'infrastructure', 
+                    description: 'Front cable management',
+                    isInfrastructure: true,
+                    managerType: 'horizontal',
+                    height: 2
+                }
             }
         };
     }
@@ -151,7 +265,7 @@ class EnhancedEquipmentLibrary {
     findDeviceConfig(deviceType) {
         if (!this.devicesCache) return null;
         
-        const categories = ['switches', 'routers', 'firewalls', 'pdus', 'patch-panels', 'servers', 'accessories', 'diagnostics'];
+        const categories = ['switches', 'routers', 'firewalls', 'pdus', 'patch-panels', 'servers', 'accessories', 'diagnostics', 'infrastructure'];
         
         for (const category of categories) {
             if (this.devicesCache[category] && this.devicesCache[category][deviceType]) {
